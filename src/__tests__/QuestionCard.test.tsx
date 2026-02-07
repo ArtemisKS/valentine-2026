@@ -5,7 +5,7 @@ import { QuestionCard } from '../components/QuestionCard';
 describe('QuestionCard', () => {
   it('renders question text', () => {
     render(
-      <QuestionCard designVariant="gradient-rose" questionText="What is your favorite color?">
+      <QuestionCard questionText="What is your favorite color?">
         <div>Test content</div>
       </QuestionCard>
     );
@@ -14,30 +14,53 @@ describe('QuestionCard', () => {
 
   it('renders children content', () => {
     render(
-      <QuestionCard designVariant="gradient-rose" questionText="Test question">
+      <QuestionCard questionText="Test question">
         <button type="button">Test button</button>
       </QuestionCard>
     );
     expect(screen.getByRole('button', { name: /test button/i })).toBeInTheDocument();
   });
 
-  it('applies design variant styling', () => {
+  it('applies liquid glass design styling', () => {
     const { container } = render(
-      <QuestionCard designVariant="gradient-rose" questionText="Test">
+      <QuestionCard questionText="Test">
         <div>Content</div>
       </QuestionCard>
     );
-    const cardElement = container.querySelector('[class*="from-rose"]');
+    const cardElement = container.querySelector('[class*="backdrop-blur"]');
     expect(cardElement).toBeInTheDocument();
   });
 
-  it('applies different design variant', () => {
+  it('renders animated background decorations', () => {
     const { container } = render(
-      <QuestionCard designVariant="romantic-purple" questionText="Test">
+      <QuestionCard questionText="Test">
         <div>Content</div>
       </QuestionCard>
     );
-    const cardElement = container.querySelector('[class*="from-purple"]');
-    expect(cardElement).toBeInTheDocument();
+    const decorations = container.querySelectorAll('[class*="animate-pulse"]');
+    expect(decorations.length).toBeGreaterThan(0);
+  });
+
+  it('renders video element when videoSrc is provided', () => {
+    const { container } = render(
+      <QuestionCard questionText="Test" videoSrc="videos/cat1.webm">
+        <div>Content</div>
+      </QuestionCard>
+    );
+    const videoElement = container.querySelector('video');
+    expect(videoElement).toBeInTheDocument();
+    expect(videoElement).toHaveAttribute('autoplay');
+    expect(videoElement).toHaveAttribute('loop');
+    expect(videoElement?.muted).toBe(true);
+  });
+
+  it('does not render video element when videoSrc is undefined', () => {
+    const { container } = render(
+      <QuestionCard questionText="Test">
+        <div>Content</div>
+      </QuestionCard>
+    );
+    const videoElement = container.querySelector('video');
+    expect(videoElement).not.toBeInTheDocument();
   });
 });
