@@ -235,8 +235,9 @@
       "npm run build": "ask",
       "npm run lint": "allow",
       "npm run test*": "allow",
-      "npm install": "ask",
+      "npm install": "allow",
       "npm ci": "ask",
+      "npm list*": "allow",
 
       // bun
       "bun *": "ask",
@@ -252,6 +253,7 @@
       "bun add *": "allow",
       "bun run *": "allow",
       "bun init *": "allow",
+      "bun list*": "allow",
 
       "vite *": "allow"
     }
