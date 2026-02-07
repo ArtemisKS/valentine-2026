@@ -6,6 +6,7 @@ export const questions: Question[] = [
     type: 'multipleChoice',
     question: 'What makes your heart skip a beat when we\'re together?',
     designVariant: 'gradient-rose',
+    videoSrc: 'videos/1-cat-piano.webm',
     options: [
       {
         text: 'When you hold my hand unexpectedly',
@@ -44,6 +45,7 @@ export const questions: Question[] = [
     type: 'yesNo',
     question: 'Do you believe we\'re writing the most beautiful story together?',
     designVariant: 'romantic-purple',
+    videoSrc: 'videos/2-cat-funny-clip.webm',
     options: [
       {
         value: 'yes',
@@ -90,6 +92,7 @@ export const questions: Question[] = [
     type: 'multipleChoice',
     question: 'What\'s your favorite thing about the way we connect?',
     designVariant: 'love-bubbles',
+    videoSrc: 'videos/3-cat-japanese.webm',
     options: [
       {
         text: 'We understand each other without words',
@@ -128,6 +131,7 @@ export const questions: Question[] = [
     type: 'yesNo',
     question: 'Would you say that being with me feels like home?',
     designVariant: 'golden-glow',
+    videoSrc: 'videos/4-tyn-tyn.webm',
     options: [
       {
         value: 'yes',

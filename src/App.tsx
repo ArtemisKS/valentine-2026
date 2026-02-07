@@ -156,10 +156,11 @@ export default function App() {
       <div className="min-h-screen flex flex-col animate-[fadeIn_0.4s_ease-in] relative">
         <ProgressBar current={state.questionIndex + 1} total={questions.length} />
         
-        <QuestionCard
-          designVariant={currentQuestion.designVariant}
-          questionText={currentQuestion.question}
-        >
+         <QuestionCard
+           designVariant={currentQuestion.designVariant}
+           questionText={currentQuestion.question}
+           videoSrc={currentQuestion.videoSrc}
+         >
           {currentQuestion.type === 'multipleChoice' && (
             <MultipleChoiceQuestion
               question={currentQuestion}

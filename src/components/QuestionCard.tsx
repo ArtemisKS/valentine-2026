@@ -3,6 +3,7 @@ import React from 'react';
 interface QuestionCardProps {
   designVariant: string;
   questionText: string;
+  videoSrc?: string;
   children: React.ReactNode;
 }
 
