@@ -1,9 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 
 describe('App', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
   it('renders intro screen on initial load', () => {
     render(<App />);
     expect(screen.getByText(/happy valentine/i)).toBeInTheDocument();
