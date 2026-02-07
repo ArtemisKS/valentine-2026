@@ -35,12 +35,12 @@
             <td style="padding: 8px 0; color: #333; font-weight: 700;">{{user_name}}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 0; color: #666; font-weight: 600;">Email:</td>
-            <td style="padding: 8px 0; color: #333;">{{user_email}}</td>
-          </tr>
-          <tr>
             <td style="padding: 8px 0; color: #666; font-weight: 600;">Submitted:</td>
             <td style="padding: 8px 0; color: #333;">{{timestamp}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666; font-weight: 600;">"No" clicks:</td>
+            <td style="padding: 8px 0; color: #333; font-weight: 700;">{{no_count}} times 😏</td>
           </tr>
         </table>
       </div>
@@ -49,22 +49,20 @@
       <div style="margin-bottom: 30px;">
         <h2 style="margin: 0 0 20px; color: #333; font-size: 20px; font-weight: 600; display: flex; align-items: center;">
           <span style="margin-right: 10px;">💝</span>
-          Their Romantic Answers
+          Quiz Answers
         </h2>
         
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 25px; border: 2px solid #e9ecef; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8; color: #495057;">{{answers}}</div>
+        <div style="background: #ffffff; border-radius: 12px; padding: 25px; border: 2px solid #e9ecef; font-size: 15px; line-height: 1.8; color: #333;">{{{answers}}}</div>
       </div>
 
-      <!-- Love Letter Preview (if included) -->
+      <!-- Love Letter -->
       {{#love_letter}}
       <div style="margin-bottom: 30px; background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); border-radius: 12px; padding: 25px; border-left: 4px solid #667eea;">
         <h2 style="margin: 0 0 15px; color: #5a67d8; font-size: 18px; font-weight: 600; display: flex; align-items: center;">
           <span style="margin-right: 10px;">💌</span>
-          Generated Love Letter
+          Love Letter
         </h2>
-        <div style="background: white; border-radius: 8px; padding: 20px; font-style: italic; line-height: 1.8; color: #4a5568;">
-          {{love_letter}}
-        </div>
+        <div style="background: white; border-radius: 8px; padding: 20px; font-family: Georgia, 'Times New Roman', serif; font-style: italic; line-height: 1.9; color: #4a5568; white-space: pre-wrap;">{{love_letter}}</div>
       </div>
       {{/love_letter}}
 

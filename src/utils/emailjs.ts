@@ -20,10 +20,11 @@ import emailjs from "@emailjs/browser";
  */
 export interface QuizAnswerPayload {
   user_name: string;
-  user_email: string;
-  answers: string; // JSON stringified answers or formatted text
+  answers: string;
+  love_letter: string;
+  no_count: string;
   timestamp?: string;
-  [key: string]: string | undefined; // Allow additional template variables
+  [key: string]: string | undefined;
 }
 
 /**

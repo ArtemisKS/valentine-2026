@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 
 interface ValentinePromptProps {
-  onYes: () => void;
+  onYes: (noCount: number) => void;
 }
 
 export function ValentinePrompt({ onYes }: ValentinePromptProps) {
@@ -12,6 +12,7 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
   const [policeFlicker, setPoliceFlicker] = useState(false);
   const [noButtonOpacity, setNoButtonOpacity] = useState(1);
   const [isYesClicked, setIsYesClicked] = useState(false);
+  const [noClickCount, setNoClickCount] = useState(0);
   const noButtonRef = useRef<HTMLButtonElement>(null);
   const buttonContainerRef = useRef<HTMLDivElement>(null);
   const scaleIntervalRef = useRef<number | null>(null);
@@ -104,7 +105,7 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
     }, 250);
 
     setTimeout(() => {
-      onYes();
+      onYes(noClickCount);
     }, 500);
   };
 
@@ -125,9 +126,9 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
 
     const DODGE_THRESHOLD_PX = 180;
     if (distance < DODGE_THRESHOLD_PX) {
-      // Start chase mode
       if (!isChasing) {
         setIsChasing(true);
+        setNoClickCount(prev => prev + 1);
         startSizeAnimation();
         startPoliceFlicker();
       }

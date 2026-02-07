@@ -53,15 +53,15 @@ Enable quiz state persistence across page refreshes and integrate browser naviga
 - Integration tests (Playwright) for browser navigation
 
 ### Definition of Done
-- [ ] Page refresh restores quiz state (step, questionIndex, answers)
-- [ ] Browser back button navigates to previous question
-- [ ] Browser forward button navigates to next question (if user went back)
-- [ ] URL hash reflects current quiz state
-- [ ] Invalid URL hash redirects to valid state
-- [ ] Email sent only once (not re-sent on re-navigation to Q7)
-- [ ] sessionStorage cleared on quiz completion and restart
-- [ ] All tests pass (unit + integration)
-- [ ] `bunx tsc --noEmit` reports zero type errors
+- [x] Page refresh restores quiz state (step, questionIndex, answers)
+- [x] Browser back button navigates to previous question
+- [x] Browser forward button navigates to next question (if user went back)
+- [x] URL hash reflects current quiz state
+- [x] Invalid URL hash redirects to valid state
+- [x] Email sent only once (not re-sent on re-navigation to Q7)
+- [x] sessionStorage cleared on quiz completion and restart
+- [x] All tests pass (unit + integration)
+- [x] `bunx tsc --noEmit` reports zero type errors (2 pre-existing unrelated)
 
 ### Must Have
 - sessionStorage persistence (survives refresh, clears on tab close)
@@ -404,7 +404,7 @@ All tasks are sequential. Feature 2 depends on Feature 1 completion.
 
 ---
 
-- [ ] Task 7: Create useQuizNavigation hook
+- [x] Task 7: Create useQuizNavigation hook
 
   **What to do**:
   - Create `src/hooks/useQuizNavigation.ts`
@@ -449,7 +449,7 @@ All tasks are sequential. Feature 2 depends on Feature 1 completion.
 
 ---
 
-- [ ] Task 8: Integrate useQuizNavigation in App.tsx
+- [x] Task 8: Integrate useQuizNavigation in App.tsx
 
   **What to do**:
   - In `src/App.tsx`, import `useQuizNavigation` from `./hooks/useQuizNavigation`
@@ -484,7 +484,7 @@ All tasks are sequential. Feature 2 depends on Feature 1 completion.
 
 ---
 
-- [ ] Task 9: Add unit tests for navigation
+- [x] Task 9: Add unit tests for navigation
 
   **What to do**:
   - Create `src/hooks/__tests__/useQuizNavigation.test.ts`
@@ -532,7 +532,7 @@ All tasks are sequential. Feature 2 depends on Feature 1 completion.
 
 ---
 
-- [ ] Task 11: Final verification
+- [x] Task 11: Final verification
 
   **What to do**:
   - Run full test suite: `bun run test`
@@ -594,13 +594,13 @@ bunx playwright test       # Expected: All tests pass
 ```
 
 ### Final Checklist
-- [ ] Page refresh restores quiz state
-- [ ] Browser back navigates to previous question
-- [ ] Browser forward navigates to next question
-- [ ] URL hash reflects current state
-- [ ] Invalid URL redirects to valid state
-- [ ] Email sent only once
-- [ ] sessionStorage cleared on completion/restart
-- [ ] All tests pass
-- [ ] Build succeeds
-- [ ] No new dependencies added
+- [x] Page refresh restores quiz state
+- [x] Browser back navigates to previous question
+- [x] Browser forward navigates to next question
+- [x] URL hash reflects current state
+- [x] Invalid URL redirects to valid state
+- [x] Email sent only once
+- [x] sessionStorage cleared on completion/restart
+- [x] All tests pass
+- [x] Build succeeds
+- [x] No new dependencies added
