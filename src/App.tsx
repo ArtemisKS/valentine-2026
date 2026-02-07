@@ -10,6 +10,7 @@ import { NavigationButtons } from './components/NavigationButtons';
 import { ScoreReveal } from './components/ScoreReveal';
 import { LoveLetter } from './components/LoveLetter';
 import { ValentinePrompt } from './components/ValentinePrompt';
+import { Footer } from './components/Footer';
 import { questions } from './data/questions';
 import { triggerCelebration } from './utils/confetti';
 import { sendQuizAnswers, initializeEmailJS } from './utils/emailjs';
@@ -152,7 +153,7 @@ export default function App() {
 
   if (state.step === 'question' && currentQuestion) {
     return (
-      <div className="min-h-screen flex flex-col animate-[fadeIn_0.4s_ease-in]">
+      <div className="min-h-screen flex flex-col animate-[fadeIn_0.4s_ease-in] relative">
         <ProgressBar current={state.questionIndex + 1} total={questions.length} />
         
         <QuestionCard
@@ -197,37 +198,47 @@ export default function App() {
             showNext={false}
           />
         </QuestionCard>
+        <Footer />
       </div>
     );
   }
 
   if (state.step === 'score') {
     return (
-      <ScoreReveal
-        onContinue={async () => {
-          await triggerCelebration();
-          dispatch({ type: 'SHOW_LETTER' });
-        }}
-      />
+      <>
+        <ScoreReveal
+          onContinue={async () => {
+            await triggerCelebration();
+            dispatch({ type: 'SHOW_LETTER' });
+          }}
+        />
+        <Footer />
+      </>
     );
   }
 
   if (state.step === 'letter') {
     return (
-      <LoveLetter
-        letterSegments={state.answers}
-        onContinue={() => dispatch({ type: 'SHOW_VALENTINE' })}
-      />
+      <>
+        <LoveLetter
+          letterSegments={state.answers}
+          onContinue={() => dispatch({ type: 'SHOW_VALENTINE' })}
+        />
+        <Footer />
+      </>
     );
   }
 
   if (state.step === 'valentine') {
     return (
-      <ValentinePrompt
-        onYes={async () => {
-          await triggerCelebration();
-        }}
-      />
+      <>
+        <ValentinePrompt
+          onYes={async () => {
+            await triggerCelebration();
+          }}
+        />
+        <Footer />
+      </>
     );
   }
 
