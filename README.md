@@ -2,6 +2,31 @@
 
 A romantic, interactive Valentine's Day quiz built with React, TypeScript, and Tailwind CSS. The quiz generates a personalized love letter based on your answers and includes a fun "runaway button" surprise at the end.
 
+## Table of Contents
+
+- [Features](#features)
+- [Local Setup](#local-setup)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Available Commands](#available-commands)
+- [EmailJS Setup (Optional)](#emailjs-setup-optional)
+- [Customization](#customization)
+  - [Update Quiz Questions](#update-quiz-questions)
+  - [Update Love Letter Recipient](#update-love-letter-recipient)
+  - [Customize Design Variants](#customize-design-variants)
+  - [Customize Email Template](#customize-email-template)
+- [Deployment](#deployment)
+  - [Automatic Deployment to GitHub Pages](#automatic-deployment-to-github-pages)
+  - [Manual Deployment](#manual-deployment)
+- [Project Structure](#project-structure)
+- [Technology Stack](#technology-stack)
+- [Testing](#testing)
+- [Browser Support](#browser-support)
+- [Performance](#performance)
+- [Accessibility](#accessibility)
+- [License](#license)
+- [Questions?](#questions)
+
 ## Features
 
 - **Interactive Quiz**: 7 thoughtfully designed questions with multiple question types
@@ -51,16 +76,38 @@ bun run test
 
 ## EmailJS Setup (Optional)
 
-To enable email notifications when quiz answers are submitted:
+### TL;DR
 
-1. Follow the detailed setup guide: [SETUP_EMAILJS.md](./SETUP_EMAILJS.md)
-2. Create a `.env` file with your EmailJS credentials:
+**What it does**: Sends quiz answers to your email (no backend needed). Free tier: 200 emails/month.
+
+**Quick Setup**:
+1. Sign up at [emailjs.com](https://www.emailjs.com/)
+2. Add email service (Gmail/Outlook) → get **Service ID**
+3. Create template using our [`quiz-answers.html`](./email-templates/quiz-answers.html) → get **Template ID**
+4. Get **Public Key** from Account → API Keys
+5. Add to `.env`:
+   ```bash
+   EMAILJS_SERVICE_ID=service_abc123
+   EMAILJS_TEMPLATE_ID=template_xyz789
+   EMAILJS_PUBLIC_KEY=pk_abc123xyz789
    ```
-   EMAILJS_SERVICE_ID=your_service_id
-   EMAILJS_TEMPLATE_ID=your_template_id
-   EMAILJS_PUBLIC_KEY=your_public_key
-   ```
-3. The quiz will gracefully handle missing configuration (won't break if EmailJS isn't set up)
+
+**Gracefully degrades** if not configured (won't break the quiz).
+
+---
+
+### Full Setup Guide
+
+For detailed step-by-step instructions, see **[email-templates/SETUP.md](./email-templates/SETUP.md)**.
+
+**Our Custom Email Template**:
+- 💝 Beautiful gradient design with emoji decorations
+- 📊 Formatted participant details and quiz answers  
+- 💌 Optional love letter preview section
+- 📱 Mobile-responsive layout (600px max-width)
+- ✨ Works with Gmail, Outlook, Apple Mail, Yahoo, ProtonMail
+
+**Template Documentation**: [`email-templates/README.md`](./email-templates/README.md)
 
 ## Customization
 
@@ -86,6 +133,26 @@ Edit `/src/styles/questionVariants.ts` to modify:
 - Text colors
 - Accent colors
 - Decorative patterns
+
+### Customize Email Template
+
+The project includes a professional HTML email template for quiz notifications:
+
+**Template Location**: [`email-templates/quiz-answers.html`](./email-templates/quiz-answers.html)
+
+**Features**:
+- 💝 Beautiful gradient design with emoji decorations
+- 📊 Formatted participant details and quiz answers
+- 💌 Optional love letter preview section
+- 📱 Mobile-responsive layout (600px max-width)
+- ✨ Inline CSS for email client compatibility
+
+**Full Documentation**: See [`email-templates/README.md`](./email-templates/README.md) for:
+- Complete variable reference
+- Setup instructions for EmailJS
+- Customization guide
+- Email client compatibility list
+- Testing tips
 
 ## Deployment
 
@@ -195,5 +262,6 @@ Private project - All rights reserved
 ## Questions?
 
 For setup issues or customization help, refer to:
-- [SETUP_EMAILJS.md](./SETUP_EMAILJS.md) - Email configuration guide
+- [email-templates/SETUP.md](./email-templates/SETUP.md) - EmailJS configuration guide
+- [email-templates/README.md](./email-templates/README.md) - Email template documentation
 - [CLAUDE.md](./CLAUDE.md) - Development guidelines
