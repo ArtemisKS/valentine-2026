@@ -61,16 +61,6 @@
     "provider": "agent-browser"
   },
   "lsp": {
-    "intelephense": {
-      "command": [
-        "intelephense",
-        "--stdio"
-      ],
-      "extensions": [
-        ".php"
-      ],
-      "priority": 10
-    },
     "typescript-language-server": {
       "command": [
         "typescript-language-server",
@@ -81,15 +71,6 @@
         ".tsx",
         ".js",
         ".jsx"
-      ],
-      "priority": 10
-    },
-    "vue-language-server": {
-      "command": [
-        "bin/ai/vue-language-server-wrapper.js"
-      ],
-      "extensions": [
-        ".vue"
       ],
       "priority": 10
     },
@@ -148,12 +129,6 @@
     }
   },
   "formatters": {
-    "php": {
-      "command": "bin/smart-format-php",
-      "args": [
-        "${file}"
-      ]
-    },
     "javascript": {
       "command": "bin/smart-format-js",
       "args": [
@@ -161,12 +136,6 @@
       ]
     },
     "typescript": {
-      "command": "bin/smart-format-js",
-      "args": [
-        "${file}"
-      ]
-    },
-    "vue": {
       "command": "bin/smart-format-js",
       "args": [
         "${file}"
@@ -257,7 +226,7 @@
       "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "prometheus": {
-      "model": "anthropic/claude-sonnet-4-5-20250929"
+      "model": "anthropic/claude-opus-4-6"
     },
     "metis": {
       "model": "anthropic/claude-opus-4-6"

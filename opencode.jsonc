@@ -177,6 +177,7 @@
       "awk *": "allow",
       "read *": "allow",
       "jq *": "allow",
+      "test *": "allow",
 
       // git RO
       "git *": "ask",
@@ -226,49 +227,9 @@
       "make *": "ask",
       "make status": "allow",
 
-      // opencode specific
-      "vue-language-server *": "allow",
-      "typescript-language-server *": "allow",
-      "intelephense *": "allow",
-      "bash-language-server *": "allow",
-      "agent-server *": "allow",
-
-      // php composer
-      "composer *": "ask",
-      "composer install": "ask",
-      "composer update *": "ask",
-      "composer require *": "ask",
-      "composer dump-autoload": "allow",
-      "composer validate": "allow",
-
-      // symfony
-      "php bin/console list": "allow",
-      "php bin/console about": "allow",
-      "php bin/console help *": "allow",
-      "php bin/console debug:*": "allow",
-      "php bin/console router:match *": "allow",
-      "php bin/console make:*": "allow",
-      "php bin/console cache:clear": "allow",
-      "php bin/console cache:pool:clear *": "allow",
-      "php bin/console lint:*": "allow",
-
-      // doctrine
-      "php bin/console doctrine:schema:validate": "allow",
-      "php bin/console doctrine:schema:update *": "ask",
-      "php bin/console doctrine:migrations:migrate *": "ask",
-      "php bin/console doctrine:database:drop *": "deny",
-
-      // php testing
-      "vendor/bin/phpunit": "allow",
-      "vendor/bin/phpunit *": "allow",
-      "php vendor/bin/phpunit *": "allow",
-      "vendor/bin/codecept run": "allow",
-      "vendor/bin/codecept run *": "allow",
-      "php vendor/bin/codecept run *": "allow",
-      "php -l*": "allow",
-
       // npm
       "npx *": "ask",
+      "npmx *": "ask",
       "npm run dev": "allow",
       "npm run serve": "allow",
       "npm run build": "ask",
@@ -279,6 +240,7 @@
 
       // bun
       "bun *": "ask",
+      "bunx *": "ask",
       "bun run dev": "allow",
       "bun run serve": "allow",
       "bun run build": "ask",
@@ -287,15 +249,11 @@
       "bun install": "ask",
       "bun pm *": "ask",
       "bun pm ls *": "allow",
+      "bun add *": "allow",
+      "bun run *": "allow",
+      "bun init *": "allow",
 
-      // local bins
-      "*/bin/console *": "ask",
-      "*composer *": "ask",
-      "*bin/phpunit *": "allow",
-      "*/vendor/bin/codecept *": "allow",
-      "python3 bin/confluence/score_confluence_pages.py": "allow",
-      "python3 bin/confluence/generate_confluence_manifest.py": "allow",
-      "./bin/ai/* *": "allow"
+      "vite *": "allow"
     }
   }
 }
