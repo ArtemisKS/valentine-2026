@@ -100,9 +100,9 @@ You can customize the template however you like. The application will send these
 2. Add these three lines:
 
 ```
-VITE_EMAILJS_SERVICE_ID=your_service_id_here
-VITE_EMAILJS_TEMPLATE_ID=your_template_id_here
-VITE_EMAILJS_PUBLIC_KEY=your_public_key_here
+EMAILJS_SERVICE_ID=your_service_id_here
+EMAILJS_TEMPLATE_ID=your_template_id_here
+EMAILJS_PUBLIC_KEY=your_public_key_here
 ```
 
 3. Replace the placeholder values with your actual IDs from Steps 2, 3, and 4:
@@ -112,9 +112,9 @@ VITE_EMAILJS_PUBLIC_KEY=your_public_key_here
 
 **Example:**
 ```
-VITE_EMAILJS_SERVICE_ID=service_a1b2c3d4e5f6g7h8
-VITE_EMAILJS_TEMPLATE_ID=template_x9y8z7w6v5u4t3s2
-VITE_EMAILJS_PUBLIC_KEY=pk_live_abc123xyz789def456ghi789
+EMAILJS_SERVICE_ID=service_a1b2c3d4e5f6g7h8
+EMAILJS_TEMPLATE_ID=template_x9y8z7w6v5u4t3s2
+EMAILJS_PUBLIC_KEY=pk_live_abc123xyz789def456ghi789
 ```
 
 ## Step 6: Restart Your Development Server
@@ -134,9 +134,9 @@ The application will now send quiz answers to your email when users submit the q
 **Problem:** You see this warning in the browser console.
 
 **Solution:** Make sure all three environment variables are set in `.env`:
-- `VITE_EMAILJS_SERVICE_ID`
-- `VITE_EMAILJS_TEMPLATE_ID`
-- `VITE_EMAILJS_PUBLIC_KEY`
+- `EMAILJS_SERVICE_ID`
+- `EMAILJS_TEMPLATE_ID`
+- `EMAILJS_PUBLIC_KEY`
 
 Restart your dev server after updating `.env`.
 

@@ -5,9 +5,9 @@
  * Uses environment variables for configuration (VITE_ prefix for client-side vars in Vite).
  *
  * Environment Variables Required:
- * - VITE_EMAILJS_SERVICE_ID: EmailJS service ID (e.g., "service_abc123")
- * - VITE_EMAILJS_TEMPLATE_ID: EmailJS template ID (e.g., "template_xyz789")
- * - VITE_EMAILJS_PUBLIC_KEY: EmailJS public key (e.g., "pk_abc123xyz")
+ * - EMAILJS_SERVICE_ID: EmailJS service ID (e.g., "service_abc123")
+ * - EMAILJS_TEMPLATE_ID: EmailJS template ID (e.g., "template_xyz789")
+ * - EMAILJS_PUBLIC_KEY: EmailJS public key (e.g., "pk_abc123xyz")
  *
  * Note: VITE_ prefix is required because these are client-side environment variables.
  * Vite only exposes variables prefixed with VITE_ to the browser for security.
@@ -31,12 +31,12 @@ export interface QuizAnswerPayload {
  * Called once on app startup
  */
 export function initializeEmailJS(): void {
-  const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+  const publicKey = import.meta.env.EMAILJS_PUBLIC_KEY;
 
   if (!publicKey) {
     console.warn(
       "EmailJS public key not configured. Email sending will be disabled. " +
-        "Set VITE_EMAILJS_PUBLIC_KEY in .env file."
+        "Set EMAILJS_PUBLIC_KEY in .env file."
     );
     return;
   }
@@ -63,15 +63,15 @@ export function initializeEmailJS(): void {
 export async function sendQuizAnswers(
   answers: QuizAnswerPayload
 ): Promise<string> {
-  const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-  const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-  const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+  const serviceId = import.meta.env.EMAILJS_SERVICE_ID;
+  const templateId = import.meta.env.EMAILJS_TEMPLATE_ID;
+  const publicKey = import.meta.env.EMAILJS_PUBLIC_KEY;
 
   // Graceful degradation: if not configured, log and return empty string
   if (!serviceId || !templateId || !publicKey) {
     console.warn(
       "EmailJS not fully configured. Skipping email send. " +
-        "Configure VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, and VITE_EMAILJS_PUBLIC_KEY in .env"
+        "Configure EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, and EMAILJS_PUBLIC_KEY in .env"
     );
     return "";
   }
@@ -99,8 +99,8 @@ export async function sendQuizAnswers(
  */
 export function isEmailJSConfigured(): boolean {
   return !!(
-    import.meta.env.VITE_EMAILJS_SERVICE_ID &&
-    import.meta.env.VITE_EMAILJS_TEMPLATE_ID &&
-    import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+    import.meta.env.EMAILJS_SERVICE_ID &&
+    import.meta.env.EMAILJS_TEMPLATE_ID &&
+    import.meta.env.EMAILJS_PUBLIC_KEY
   );
 }

@@ -56,9 +56,9 @@ To enable email notifications when quiz answers are submitted:
 1. Follow the detailed setup guide: [SETUP_EMAILJS.md](./SETUP_EMAILJS.md)
 2. Create a `.env` file with your EmailJS credentials:
    ```
-   VITE_EMAILJS_SERVICE_ID=your_service_id
-   VITE_EMAILJS_TEMPLATE_ID=your_template_id
-   VITE_EMAILJS_PUBLIC_KEY=your_public_key
+   EMAILJS_SERVICE_ID=your_service_id
+   EMAILJS_TEMPLATE_ID=your_template_id
+   EMAILJS_PUBLIC_KEY=your_public_key
    ```
 3. The quiz will gracefully handle missing configuration (won't break if EmailJS isn't set up)
 
@@ -91,16 +91,22 @@ Edit `/src/styles/questionVariants.ts` to modify:
 
 ### Automatic Deployment to GitHub Pages
 
-This project uses GitHub Actions for automatic deployment:
+This project uses GitHub Actions for automatic deployment.
 
-1. Push changes to the `main` branch
-2. GitHub Actions automatically:
-   - Installs dependencies
-   - Runs tests
-   - Builds the project
-   - Deploys to GitHub Pages
+#### First-Time Setup
 
-The workflow is defined in `.github/workflows/deploy.yml`
+1. Go to **Settings > Pages** in the GitHub repository
+2. Under **Source**, select **"GitHub Actions"** (not "Deploy from a branch")
+3. Click **Save**
+
+#### How It Works
+
+Once Pages is enabled, every push to the `master` branch triggers the workflow defined in `.github/workflows/deploy.yml`:
+
+1. Installs dependencies with Bun
+2. Runs tests
+3. Builds the project (`vite build` with `base: '/valentine-2026/'`)
+4. Uploads the `dist/` artifact and deploys to GitHub Pages
 
 **Live URL**: `https://millon15.github.io/valentine-2026/`
 
