@@ -248,70 +248,63 @@
   },
   "agents": {
     "sisyphus": {
-      "model": "github-copilot/gemini-3-pro-preview"
+      "model": "anthropic/claude-opus-4-6"
     },
     "sisyphus-junior": {
-      "model": "github-copilot/gpt-5.2-codex",
-      "variant": "xhigh"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "atlas": {
-      "model": "github-copilot/gpt-5.2-codex",
-      "variant": "xhigh"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "prometheus": {
-      "model": "github-copilot/gpt-5.2-codex",
-      "variant": "xhigh"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "metis": {
-      "model": "github-copilot/gemini-3-pro-preview"
+      "model": "anthropic/claude-opus-4-6"
     },
     "momus": {
-      "model": "github-copilot/gemini-3-pro-preview"
+      "model": "anthropic/claude-opus-4-6"
     },
     "hephaestus": {
-      "model": "github-copilot/gemini-3-pro-preview"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "oracle": {
-      "model": "github-copilot/gpt-5.2-codex",
-      "variant": "xhigh"
+      "model": "anthropic/claude-opus-4-6"
     },
     "librarian": {
-      "model": "github-copilot/gemini-3-pro-preview"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "explore": {
-      "model": "github-copilot/gemini-3-flash-preview"
+      "model": "anthropic/claude-haiku-4-5-20251001"
     },
     "multimodal-looker": {
-      "model": "github-copilot/gemini-3-flash-preview"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     }
   },
   "categories": {
     "visual-engineering": {
-      "model": "github-copilot/gemini-3-pro-preview"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "ultrabrain": {
-      "model": "github-copilot/gpt-5.2-codex",
-      "variant": "xhigh"
+      "model": "anthropic/claude-opus-4-6"
     },
     "deep": {
-      "model": "github-copilot/gpt-5.2-codex",
-      "variant": "xhigh"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "artistry": {
-      "model": "github-copilot/gemini-3-pro-preview"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "quick": {
-      "model": "github-copilot/gemini-3-flash-preview"
+      "model": "anthropic/claude-haiku-4-5-20251001"
     },
     "unspecified-low": {
-      "model": "github-copilot/gemini-3-flash-preview"
+      "model": "anthropic/claude-haiku-4-5-20251001"
     },
     "unspecified-high": {
-      "model": "github-copilot/gpt-5.2-codex",
-      "variant": "xhigh"
+      "model": "anthropic/claude-sonnet-4-5-20250929"
     },
     "writing": {
-      "model": "github-copilot/gemini-3-flash-preview"
+      "model": "anthropic/claude-haiku-4-5-20251001"
     }
   }
 }
