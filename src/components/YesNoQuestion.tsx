@@ -30,8 +30,8 @@ export const YesNoQuestion: React.FC<YesNoQuestionProps> = ({
           onClick={() => onAnswer(noOption.letterSegment)}
           className={`flex-1 max-w-xs px-6 sm:px-8 py-5 sm:py-6 rounded-2xl border-2 transition-all duration-300 ${
             isNoSelected
-              ? 'border-gray-400 bg-gray-100 shadow-lg'
-              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+              ? 'border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-200/50'
+              : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'
           }`}
         >
           <div className="text-center space-y-2">
@@ -39,7 +39,7 @@ export const YesNoQuestion: React.FC<YesNoQuestionProps> = ({
               💫
             </div>
             <span className={`block text-lg sm:text-xl font-semibold ${
-              isNoSelected ? 'text-gray-900' : 'text-gray-700'
+              isNoSelected ? 'text-emerald-900' : 'text-gray-700'
             }`}>
               {noOption.text}
             </span>
@@ -51,8 +51,8 @@ export const YesNoQuestion: React.FC<YesNoQuestionProps> = ({
           onClick={() => onAnswer(yesOption.letterSegment)}
           className={`flex-1 max-w-xs px-6 sm:px-8 py-5 sm:py-6 rounded-2xl border-2 transition-all duration-300 ${
             isYesSelected
-              ? 'border-rose-500 bg-rose-50 shadow-lg shadow-rose-200/50'
-              : 'border-gray-200 bg-white hover:border-rose-300 hover:bg-rose-50/50'
+              ? 'border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-200/50'
+              : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'
           }`}
         >
           <div className="text-center space-y-2">
@@ -60,7 +60,7 @@ export const YesNoQuestion: React.FC<YesNoQuestionProps> = ({
               💖
             </div>
             <span className={`block text-lg sm:text-xl font-semibold ${
-              isYesSelected ? 'text-rose-900' : 'text-gray-700'
+              isYesSelected ? 'text-emerald-900' : 'text-gray-700'
             }`}>
               {yesOption.text}
             </span>
