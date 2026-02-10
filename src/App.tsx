@@ -27,6 +27,7 @@ interface QuizState {
   questionIndex: number;
   answers: string[];
   emailSent: boolean;
+  reachedEnd: boolean;
 }
 
 type QuizAction =
@@ -46,6 +47,7 @@ const initialState: QuizState = {
   questionIndex: 0,
   answers: [],
   emailSent: false,
+  reachedEnd: false,
 };
 
 function getAnswerText(question: Question, letterSegment: string | undefined): string {
@@ -70,6 +72,7 @@ function quizReducer(state: QuizState, action: QuizAction): QuizState {
          questionIndex: 0,
          answers: [],
          emailSent: false,
+         reachedEnd: false,
        };
 
     case 'ANSWER_QUESTION': {
@@ -124,6 +127,7 @@ function quizReducer(state: QuizState, action: QuizAction): QuizState {
       return {
         ...state,
         step: 'valentine',
+        reachedEnd: true,
         emailSent: state.emailSent,
       };
 
@@ -178,6 +182,8 @@ export default function App() {
     }
   };
 
+  const journeyNav = state.reachedEnd ? handleJourneyNavigate : undefined;
+
   const currentQuestion = questions[state.questionIndex];
   const currentAnswer = state.answers[state.questionIndex] ?? null;
 
@@ -185,7 +191,7 @@ export default function App() {
   if (state.step === 'intro') {
     return (
       <div className="animate-[fadeIn_0.5s_ease-out]">
-        <JourneyIndicator currentStep={state.step} />
+        <JourneyIndicator currentStep={state.step} onNavigate={journeyNav} />
         <IntroScreen onStart={handleStart} />
       </div>
     );
@@ -194,7 +200,7 @@ export default function App() {
   if (state.step === 'question' && currentQuestion) {
     return (
       <div className="min-h-screen flex flex-col animate-[fadeIn_0.4s_ease-in] relative">
-        <JourneyIndicator currentStep={state.step} />
+        <JourneyIndicator currentStep={state.step} onNavigate={journeyNav} />
         <ProgressBar current={state.questionIndex + 1} total={questions.length} />
         
          <QuestionCard
@@ -254,7 +260,7 @@ export default function App() {
   if (state.step === 'score') {
     return (
       <div className="animate-[fadeIn_0.5s_ease-out]">
-        <JourneyIndicator currentStep={state.step} />
+        <JourneyIndicator currentStep={state.step} onNavigate={journeyNav} />
         <ScoreReveal
           onContinue={async () => {
             await triggerCelebration();
@@ -269,7 +275,7 @@ export default function App() {
   if (state.step === 'letter') {
     return (
       <div className="animate-[fadeIn_0.5s_ease-out]">
-        <JourneyIndicator currentStep={state.step} />
+        <JourneyIndicator currentStep={state.step} onNavigate={journeyNav} />
         <LoveLetter
           letterSegments={state.answers}
           onContinue={() => dispatch({ type: 'SHOW_VALENTINE' })}
@@ -282,7 +288,7 @@ export default function App() {
   if (state.step === 'valentine') {
     return (
       <div className="animate-[fadeIn_0.5s_ease-out]">
-        <JourneyIndicator currentStep={state.step} onNavigate={handleJourneyNavigate} />
+        <JourneyIndicator currentStep={state.step} onNavigate={journeyNav} />
         <ValentinePrompt
           onYes={async (noCount: number) => {
             await triggerCelebration();

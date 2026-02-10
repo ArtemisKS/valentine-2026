@@ -17,15 +17,15 @@ const STEPS: { key: Step; label: string }[] = [
 
 export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep, onNavigate }) => {
   const currentIndex = STEPS.findIndex(s => s.key === currentStep);
-  const isNavigable = currentStep === 'valentine' && !!onNavigate;
+  const canNavigate = !!onNavigate;
 
   return (
     <div className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-rose-200/30 shadow-sm">
       <div className="flex items-center justify-center gap-2 py-3">
         {STEPS.map((step, index) => {
-          const isCompleted = index < currentIndex;
+          const isCompleted = canNavigate || index < currentIndex;
           const isCurrent = index === currentIndex;
-          const canClick = isNavigable && (isCompleted || isCurrent);
+          const canClick = canNavigate && !isCurrent;
 
           return (
             <React.Fragment key={step.key}>
@@ -40,27 +40,27 @@ export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep,
                 type="button"
                 disabled={!canClick}
                 onClick={() => canClick && onNavigate!(step.key)}
-                className={`flex flex-col items-center gap-1 ${
-                  canClick ? 'cursor-pointer hover:opacity-70' : 'cursor-default'
+                className={`group flex flex-col items-center gap-1 transition-transform duration-300 ${
+                  canClick ? 'cursor-pointer hover:scale-110' : 'cursor-default'
                 }`}
               >
                 <div
-                  className={`rounded-full transition-all duration-500 ${
+                  className={`rounded-full transition-all duration-300 ${
                     isCurrent
                       ? 'w-3 h-3 bg-rose-500 shadow-lg shadow-rose-400/50'
                       : isCompleted
                       ? 'w-2.5 h-2.5 bg-rose-400'
                       : 'w-2 h-2 bg-rose-200/60'
-                  }`}
+                  } ${canClick ? 'group-hover:scale-125 group-hover:shadow-md group-hover:shadow-rose-400/40' : ''}`}
                 />
                 <span
-                  className={`text-[10px] transition-all duration-500 hidden sm:block ${
+                  className={`text-[10px] transition-all duration-300 hidden sm:block ${
                     isCurrent
                       ? 'text-rose-600 font-medium'
                       : isCompleted
                       ? 'text-rose-400'
                       : 'text-rose-300/60'
-                  }`}
+                  } ${canClick ? 'group-hover:text-rose-600 group-hover:font-medium' : ''}`}
                 >
                   {step.label}
                 </span>
