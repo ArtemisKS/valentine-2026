@@ -11,6 +11,7 @@ import { ScoreReveal } from './components/ScoreReveal';
 import { LoveLetter } from './components/LoveLetter';
 import { ValentinePrompt } from './components/ValentinePrompt';
 import { Footer } from './components/Footer';
+import { JourneyIndicator } from './components/JourneyIndicator';
 import { questions } from './data/questions';
 import { triggerCelebration } from './utils/confetti';
 import { sendQuizAnswers, initializeEmailJS } from './utils/emailjs';
@@ -175,12 +176,18 @@ export default function App() {
 
   // Render intro screen
   if (state.step === 'intro') {
-    return <IntroScreen onStart={handleStart} />;
+    return (
+      <>
+        <JourneyIndicator currentStep={state.step} />
+        <IntroScreen onStart={handleStart} />
+      </>
+    );
   }
 
   if (state.step === 'question' && currentQuestion) {
     return (
       <div className="min-h-screen flex flex-col animate-[fadeIn_0.4s_ease-in] relative">
+        <JourneyIndicator currentStep={state.step} />
         <ProgressBar current={state.questionIndex + 1} total={questions.length} />
         
          <QuestionCard
@@ -234,6 +241,7 @@ export default function App() {
   if (state.step === 'score') {
     return (
       <>
+        <JourneyIndicator currentStep={state.step} />
         <ScoreReveal
           onContinue={async () => {
             await triggerCelebration();
@@ -248,6 +256,7 @@ export default function App() {
   if (state.step === 'letter') {
     return (
       <>
+        <JourneyIndicator currentStep={state.step} />
         <LoveLetter
           letterSegments={state.answers}
           onContinue={() => dispatch({ type: 'SHOW_VALENTINE' })}
@@ -260,6 +269,7 @@ export default function App() {
   if (state.step === 'valentine') {
     return (
       <>
+        <JourneyIndicator currentStep={state.step} />
         <ValentinePrompt
           onYes={async (noCount: number) => {
             await triggerCelebration();
