@@ -18,7 +18,7 @@ export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep 
   const currentIndex = STEPS.findIndex(s => s.key === currentStep);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+    <div className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-rose-200/30 shadow-sm">
       <div className="flex items-center justify-center gap-2 py-3">
         {STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;
