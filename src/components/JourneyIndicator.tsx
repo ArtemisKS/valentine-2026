@@ -29,7 +29,7 @@ export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep 
               {index > 0 && (
                 <div
                   className={`h-px w-6 sm:w-8 transition-colors duration-500 ${
-                    isCompleted ? 'bg-rose-400' : 'bg-rose-200/50'
+                    isCompleted || isCurrent ? 'bg-rose-400' : 'bg-rose-200/50'
                   }`}
                 />
               )}
