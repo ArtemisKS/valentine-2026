@@ -5,6 +5,12 @@ html, body {
   background-color: #fedce0; /* soft pink — 70% blend between rose-200 and white for smooth overscroll */
   background-image: linear-gradient(to bottom right, #ffe4e6, #fce7f3, #fecdd3); /* rose-100 → pink-50 → rose-200 */
   min-height: 100%;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+html.dark, html.dark body {
+  background-color: #020617; /* slate-950 */
+  background-image: linear-gradient(to bottom right, #020617, #111827, #020617); /* slate-950 → gray-900 → slate-950 */
 }
 
 body {
