@@ -28,7 +28,7 @@ export function LoveLetter({ letterSegments, onContinue }: LoveLetterProps) {
             <div className="text-center mb-8">
               <div className="text-4xl sm:text-5xl mb-4">💌</div>
               <h1 className="text-3xl sm:text-4xl font-bold text-rose-900 mb-4">
-                A Letter For You
+                {config.loveLetter.heading}
               </h1>
               {/* Divider with liquid effect */}
               <div className="relative h-px w-24 mx-auto">
@@ -61,10 +61,10 @@ export function LoveLetter({ letterSegments, onContinue }: LoveLetterProps) {
                   style={{ animationDelay: `${(validSegments.length + 1) * 0.4}s`, animationFillMode: 'both' }}
                 >
                   <p className="font-serif text-lg text-rose-900 font-medium">
-                    With all my love,
+                    {config.loveLetter.closing}
                   </p>
                   <p className="font-serif text-xl text-rose-900 mt-2 italic font-semibold">
-                    Forever yours {config.senderName} ❤️
+                    {config.loveLetter.signaturePrefix} {config.senderName} ❤️
                   </p>
                 </div>
               </div>
@@ -78,7 +78,7 @@ export function LoveLetter({ letterSegments, onContinue }: LoveLetterProps) {
               >
                 {/* Glass shine effect on hover */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                <span className="relative">One Last Thing... 💌</span>
+                <span className="relative">{config.loveLetter.continueButton} 💌</span>
               </button>
             </div>
           </div>

@@ -33,7 +33,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onStart }) => {
           <div className="text-center space-y-4 sm:space-y-6 relative">
             {/* Subtitle */}
             <p className="text-lg sm:text-xl text-rose-700 font-medium tracking-wide">
-              Happy Valentine's Day
+              {config.intro.greeting}
             </p>
 
             {/* RECIPIENT NAME - HUGE with decorations */}
@@ -78,10 +78,10 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onStart }) => {
             {/* Message with glass effect */}
             <div className="space-y-4 sm:space-y-5 bg-white/20 backdrop-blur-md rounded-2xl p-6 border border-white/40 shadow-inner">
               <p className="text-lg sm:text-xl text-rose-900 leading-relaxed font-medium">
-                I've created something special for you — a journey through our love story.
+                {config.intro.message}
               </p>
               <p className="text-base sm:text-lg text-rose-700 leading-relaxed">
-                Answer next 7 questions please :3
+                {config.intro.instruction}
               </p>
             </div>
 
@@ -93,11 +93,11 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onStart }) => {
             >
               {/* Glass shine effect on hover */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              <span className="relative">Begin Our Journey 💝</span>
+              <span className="relative">{config.intro.startButton} 💝</span>
             </button>
 
             <p className="text-sm sm:text-base text-rose-600 mt-4 sm:mt-6 bg-white/30 backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40">
-              Takes about 2 minutes • Made with love by {config.senderName} 💕
+              {config.intro.timeEstimate} • Made with love by {config.senderName} 💕
             </p>
           </div>
         </div>

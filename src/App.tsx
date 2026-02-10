@@ -291,8 +291,8 @@ export default function App() {
               '',
               ...state.answers.filter(Boolean),
               '',
-              'With all my love,',
-              `Forever yours ${config.senderName} \u2764\uFE0F`,
+              config.loveLetter.closing,
+              `${config.loveLetter.signaturePrefix} ${config.senderName} \u2764\uFE0F`,
             ].join('\n');
 
             try {

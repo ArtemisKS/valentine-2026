@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { config } from '../config';
 
 interface ScoreRevealProps {
   onContinue: () => void;
@@ -62,13 +63,12 @@ export function ScoreReveal({ onContinue }: ScoreRevealProps) {
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-bold text-rose-900 mb-4">
-              Perfect Match!
+              {config.scoreReveal.title}
             </h1>
             
             <div className="bg-white/20 backdrop-blur-md rounded-2xl p-6 border border-white/40 shadow-inner mb-8">
               <p className="text-lg sm:text-xl text-rose-900 leading-relaxed font-medium">
-                Your answers reveal something beautiful — you're absolutely perfect for each other.
-                Every response shows the depth of your connection.
+                {config.scoreReveal.message}
               </p>
             </div>
 
@@ -79,7 +79,7 @@ export function ScoreReveal({ onContinue }: ScoreRevealProps) {
             >
               {/* Glass shine effect on hover */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              <span className="relative">See Your Love Letter 💌</span>
+              <span className="relative">{config.scoreReveal.continueButton} 💌</span>
             </button>
           </div>
         </div>

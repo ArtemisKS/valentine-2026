@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import confetti from 'canvas-confetti';
+import { config } from '../config';
 
 interface ValentinePromptProps {
   onYes: (noCount: number) => void;
@@ -216,13 +217,7 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
     };
   }, []);
 
-  const NO_CLICK_MESSAGES = [
-    "Nice try! But the answer is Yes! 😏",
-    "Oops! Wrong button! 😄",
-    "Are you sure? Think again! 💕",
-    "That button doesn't work here! 😘",
-    "The only answer is Yes! 💖",
-  ];
+  const NO_CLICK_MESSAGES = config.valentine.noClickMessages;
 
   const handleNoClick = () => {
     const message = NO_CLICK_MESSAGES[noClickCount % NO_CLICK_MESSAGES.length];
@@ -284,11 +279,11 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
                 💝
               </div>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-rose-900 mb-4">
-                Will you be my Valentine?
+                {config.valentine.question}
               </h1>
               <div className="bg-white/20 backdrop-blur-md rounded-2xl p-4 border border-white/40 shadow-inner inline-block">
                 <p className="text-lg sm:text-xl text-rose-900 font-medium">
-                  You know there's only one right answer... 💕
+                  {config.valentine.subtitle} 💕
                 </p>
               </div>
             </div>
@@ -302,7 +297,7 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
                 >
                   {/* Glass shine effect on hover */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  <span className="relative">Yes! 💖</span>
+                  <span className="relative">{config.valentine.yesButton} 💖</span>
                 </button>
               </div>
 
@@ -334,7 +329,7 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
                 }}
                 className="px-4 py-2 text-white text-sm font-normal rounded border-2 border-gray-400 hover:border-gray-500 cursor-pointer"
               >
-                No
+                {config.valentine.noButton}
               </button>
             </div>
 
@@ -347,7 +342,7 @@ export function ValentinePrompt({ onYes }: ValentinePromptProps) {
             )}
 
             <p className="mt-12 sm:mt-16 text-sm text-rose-700 italic bg-white/20 backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40">
-              (Try clicking "No" if you dare... 😏)
+              {config.valentine.hintText} 😏
             </p>
           </div>
         </div>
