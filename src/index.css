@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Prevent white flash on overscroll — match the rose/pink gradient theme */
+html {
+  background-color: #fecdd3; /* rose-200: matches bottom of default gradient */
+}
+
+body {
+  background-color: #fecdd3;
+  overscroll-behavior-y: none; /* prevent bounce/overscroll on mobile */
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
