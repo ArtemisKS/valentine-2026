@@ -5,6 +5,7 @@ type Step = 'intro' | 'question' | 'score' | 'letter' | 'valentine';
 interface JourneyIndicatorProps {
   currentStep: Step;
   onNavigate?: (step: Step) => void;
+  progress?: { current: number; total: number };
 }
 
 const STEPS: { key: Step; label: string }[] = [
@@ -15,7 +16,7 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'valentine', label: 'Valentine' },
 ];
 
-export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep, onNavigate }) => {
+export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep, onNavigate, progress }) => {
   const currentIndex = STEPS.findIndex(s => s.key === currentStep);
   const canNavigate = !!onNavigate;
 
@@ -69,6 +70,25 @@ export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep,
           );
         })}
       </div>
+
+      {progress && (
+        <div className="px-4 pb-2">
+          <div className="max-w-md mx-auto flex items-center gap-3">
+            <span className="text-[10px] sm:text-xs text-gray-500 whitespace-nowrap">
+              Q{progress.current}/{progress.total}
+            </span>
+            <div className="flex-1 h-1.5 bg-gray-200/80 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${(progress.current / progress.total) * 100}%` }}
+              />
+            </div>
+            <span className="text-[10px] sm:text-xs text-gray-500">
+              {Math.round((progress.current / progress.total) * 100)}%
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

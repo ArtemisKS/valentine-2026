@@ -13,14 +13,14 @@ describe('App', () => {
     expect(screen.getByText(/jihyeon/i)).toBeInTheDocument();
   });
 
-  it('displays progress bar during quiz', async () => {
+  it('displays progress indicator during quiz', async () => {
     const user = userEvent.setup();
     render(<App />);
 
     const startButton = screen.getByRole('button', { name: /let's go/i });
     await user.click(startButton);
 
-    expect(screen.getByText(/question/i)).toBeInTheDocument();
+    expect(screen.getByText('Q1/7')).toBeInTheDocument();
   });
 
   it('shows first question after starting quiz', async () => {
@@ -30,7 +30,7 @@ describe('App', () => {
     const startButton = screen.getByRole('button', { name: /let's go/i });
     await user.click(startButton);
 
-    expect(screen.getByText(/question 1 of 7/i)).toBeInTheDocument();
+    expect(screen.getByText('Q1/7')).toBeInTheDocument();
   });
 
   it('navigates through questions on answer selection', async () => {
@@ -49,7 +49,7 @@ describe('App', () => {
       // After selecting, need to click Next to advance
       const nextButton = screen.getByRole('button', { name: /next/i });
       await user.click(nextButton);
-      expect(screen.getByText(/question 2 of 7/i)).toBeInTheDocument();
+      expect(screen.getByText('Q2/7')).toBeInTheDocument();
     }
   });
 
@@ -60,7 +60,7 @@ describe('App', () => {
     const startButton = screen.getByRole('button', { name: /let's go/i });
     await user.click(startButton);
 
-    expect(screen.getByText(/question 1 of 7/i)).toBeInTheDocument();
+    expect(screen.getByText('Q1/7')).toBeInTheDocument();
 
     // Click the first answer option for Q1
     const firstAnswerButton = screen.getByRole('button', { name: /the way our conversations just flow/i });
@@ -69,6 +69,6 @@ describe('App', () => {
     // Click Next to advance
     const nextButton = screen.getByRole('button', { name: /next/i });
     await user.click(nextButton);
-    expect(screen.getByText(/question 2 of 7/i)).toBeInTheDocument();
+    expect(screen.getByText('Q2/7')).toBeInTheDocument();
   });
 });

@@ -1,6 +1,5 @@
 import { useReducer, useEffect } from 'react';
 import { IntroScreen } from './components/IntroScreen';
-import { ProgressBar } from './components/ProgressBar';
 import { QuestionCard } from './components/QuestionCard';
 import { MultipleChoiceQuestion } from './components/MultipleChoiceQuestion';
 import { HeartRatingQuestion } from './components/HeartRatingQuestion';
@@ -200,9 +199,8 @@ export default function App() {
   if (state.step === 'question' && currentQuestion) {
     return (
       <div className="min-h-screen flex flex-col animate-[fadeIn_0.4s_ease-in] relative">
-        <JourneyIndicator currentStep={state.step} onNavigate={journeyNav} />
-        <ProgressBar current={state.questionIndex + 1} total={questions.length} />
-        
+        <JourneyIndicator currentStep={state.step} onNavigate={journeyNav} progress={{ current: state.questionIndex + 1, total: questions.length }} />
+
          <QuestionCard
            questionText={currentQuestion.question}
            videoSrc={currentQuestion.videoSrc}
