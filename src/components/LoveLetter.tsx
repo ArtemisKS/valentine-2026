@@ -8,12 +8,12 @@ export function LoveLetter({ letterSegments, onContinue }: LoveLetterProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative overflow-hidden">
-      {/* Animated background hearts */}
+      {/* Floating background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[10%] left-[5%] text-rose-300 opacity-20 animate-pulse text-6xl">💕</div>
-        <div className="absolute top-[20%] right-[10%] text-pink-300 opacity-20 animate-pulse text-5xl" style={{ animationDelay: '1s' }}>✨</div>
-        <div className="absolute bottom-[15%] left-[15%] text-rose-300 opacity-20 animate-pulse text-5xl" style={{ animationDelay: '2s' }}>💖</div>
-        <div className="absolute bottom-[25%] right-[8%] text-pink-300 opacity-20 animate-pulse text-6xl" style={{ animationDelay: '1.5s' }}>💝</div>
+        <div className="absolute top-[10%] left-[5%] text-rose-300 opacity-20 text-6xl animate-[float-1_8s_ease-in-out_infinite]">💕</div>
+        <div className="absolute top-[20%] right-[10%] text-pink-300 opacity-20 text-5xl animate-[float-2_10s_ease-in-out_infinite]" style={{ animationDelay: '1s' }}>✨</div>
+        <div className="absolute bottom-[15%] left-[15%] text-rose-300 opacity-20 text-5xl animate-[float-3_9s_ease-in-out_infinite]" style={{ animationDelay: '2s' }}>💖</div>
+        <div className="absolute bottom-[25%] right-[8%] text-pink-300 opacity-20 text-6xl animate-[float-1_11s_ease-in-out_infinite]" style={{ animationDelay: '1.5s' }}>💝</div>
       </div>
 
       <div className="max-w-3xl w-full relative z-10">
