@@ -66,7 +66,7 @@ export function LoveLetter({ letterSegments, onContinue }: LoveLetterProps) {
               >
                 {/* Glass shine effect on hover */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                <span className="relative">Continue 💖</span>
+                <span className="relative">One Last Thing... 💌</span>
               </button>
             </div>
           </div>
