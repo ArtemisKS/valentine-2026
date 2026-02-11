@@ -64,14 +64,14 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onStart }) => {
               {/* Recipient's name with liquid glass effect */}
               <div className="relative inline-block">
                 {/* Glow effect behind name */}
-                <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-rose-400 via-pink-400 to-rose-400 opacity-30 animate-pulse" />
-                
+                <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-rose-400 via-pink-400 to-rose-400 opacity-30 dark:opacity-15 animate-pulse" />
+
                 <h1 className="relative text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold bg-gradient-to-br from-rose-600 via-pink-500 to-rose-600 bg-clip-text text-transparent drop-shadow-2xl tracking-tight animate-[scale-in_0.6s_ease-out] px-4 leading-[1.2]">
                   {config.recipientName}
                 </h1>
-                
-                {/* Sparkle overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent pointer-events-none" />
+
+                {/* Sparkle overlay — nearly invisible in dark mode to avoid white rectangle */}
+                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 dark:via-white/[0.03] to-transparent pointer-events-none" />
               </div>
             </div>
 
