@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { config } from '../../config/config';
 
@@ -6,6 +6,26 @@ interface ValentinePromptProps {
   onYes: (noCount: number) => void;
   hideNoButton?: boolean;
 }
+
+/** Physics constants for the bouncing No button */
+const PHYSICS = {
+  /** Friction applied each frame (0-1, lower = more friction) */
+  FRICTION: 0.985,
+  /** Velocity below which the button stops */
+  MIN_VELOCITY: 0.3,
+  /** Initial speed when fleeing from cursor */
+  LAUNCH_SPEED: 18,
+  /** Bounce energy retention (0-1, 1 = perfectly elastic) */
+  RESTITUTION: 0.75,
+  /** Padding from container edges in pixels */
+  EDGE_PADDING: 4,
+  /** Extra gap between No button and Yes button on collision */
+  YES_BUTTON_GAP: 4,
+  /** Distance threshold (px) to trigger dodge */
+  DODGE_THRESHOLD: 180,
+  /** Distance threshold multiplier to stop chase mode */
+  CHASE_STOP_MULTIPLIER: 2.5,
+};
 
 export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
   const [noButtonPosition, setNoButtonPosition] = useState({ x: 20, y: 70 });
@@ -17,11 +37,17 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
   const [noClickCount, setNoClickCount] = useState(0);
   const [noClickMessage, setNoClickMessage] = useState<string | null>(null);
   const noButtonRef = useRef<HTMLButtonElement>(null);
+  const yesButtonRef = useRef<HTMLButtonElement>(null);
   const buttonContainerRef = useRef<HTMLDivElement>(null);
   const scaleIntervalRef = useRef<number | null>(null);
   const flickerIntervalRef = useRef<number | null>(null);
   const countRef = useRef(0);
   const messageTimerRef = useRef<number | null>(null);
+
+  // Physics state stored in refs for use inside requestAnimationFrame
+  const velocityRef = useRef({ vx: 0, vy: 0 });
+  const positionRef = useRef({ x: 20, y: 70 });
+  const animFrameRef = useRef<number | null>(null);
 
   const handleYesClick = () => {
     setIsYesClicked(true);
@@ -32,6 +58,13 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
     setIsChasing(false);
     setButtonScale(0);
     setNoButtonOpacity(0);
+
+    // Stop physics animation
+    velocityRef.current = { vx: 0, vy: 0 };
+    if (animFrameRef.current !== null) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
 
     const duration = 3000;
     const animationEnd = Date.now() + duration;
@@ -75,19 +108,208 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
 
+  /**
+   * Resolve collision between the No button rect and the Yes button rect.
+   * Returns corrected position and reflected velocity.
+   */
+  const resolveYesButtonCollision = useCallback(
+    (
+      noX: number,
+      noY: number,
+      noW: number,
+      noH: number,
+      vx: number,
+      vy: number,
+    ): { x: number; y: number; vx: number; vy: number } | null => {
+      if (!yesButtonRef.current || !buttonContainerRef.current) return null;
+
+      const containerRect = buttonContainerRef.current.getBoundingClientRect();
+      const yesRect = yesButtonRef.current.getBoundingClientRect();
+
+      // Convert Yes button to container-relative coordinates
+      const yesLeft = yesRect.left - containerRect.left;
+      const yesTop = yesRect.top - containerRect.top;
+      const yesRight = yesLeft + yesRect.width;
+      const yesBottom = yesTop + yesRect.height;
+
+      const gap = PHYSICS.YES_BUTTON_GAP;
+
+      // Check AABB overlap
+      const noRight = noX + noW;
+      const noBottom = noY + noH;
+
+      if (
+        noX < yesRight + gap &&
+        noRight > yesLeft - gap &&
+        noY < yesBottom + gap &&
+        noBottom > yesTop - gap
+      ) {
+        // Compute overlap on each axis to find smallest penetration
+        const overlapLeft = noRight - (yesLeft - gap);
+        const overlapRight = (yesRight + gap) - noX;
+        const overlapTop = noBottom - (yesTop - gap);
+        const overlapBottom = (yesBottom + gap) - noY;
+
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+
+        let newX = noX;
+        let newY = noY;
+        let newVx = vx;
+        let newVy = vy;
+
+        if (minOverlap === overlapLeft) {
+          // Push No button to the left of Yes
+          newX = yesLeft - gap - noW;
+          newVx = -Math.abs(vx) * PHYSICS.RESTITUTION;
+        } else if (minOverlap === overlapRight) {
+          // Push No button to the right of Yes
+          newX = yesRight + gap;
+          newVx = Math.abs(vx) * PHYSICS.RESTITUTION;
+        } else if (minOverlap === overlapTop) {
+          // Push No button above Yes
+          newY = yesTop - gap - noH;
+          newVy = -Math.abs(vy) * PHYSICS.RESTITUTION;
+        } else {
+          // Push No button below Yes
+          newY = yesBottom + gap;
+          newVy = Math.abs(vy) * PHYSICS.RESTITUTION;
+        }
+
+        return { x: newX, y: newY, vx: newVx, vy: newVy };
+      }
+
+      return null;
+    },
+    [],
+  );
+
+  /**
+   * Physics animation loop. Runs via requestAnimationFrame while the button
+   * has non-trivial velocity. Updates position, handles wall & Yes-button
+   * collisions, and applies friction until the button comes to rest.
+   */
+  const physicsStep = useCallback(() => {
+    const container = buttonContainerRef.current;
+    const noBtn = noButtonRef.current;
+    if (!container || !noBtn) {
+      animFrameRef.current = null;
+      return;
+    }
+
+    const vel = velocityRef.current;
+    const pos = positionRef.current;
+
+    // Apply velocity
+    let newX = pos.x + vel.vx;
+    let newY = pos.y + vel.vy;
+
+    const containerRect = container.getBoundingClientRect();
+    const noW = noBtn.offsetWidth;
+    const noH = noBtn.offsetHeight;
+
+    const pad = PHYSICS.EDGE_PADDING;
+    const maxX = containerRect.width - noW - pad;
+    const maxY = containerRect.height - noH - pad;
+
+    // Wall collisions — reflect velocity on the axis of collision
+    if (newX < pad) {
+      newX = pad;
+      vel.vx = Math.abs(vel.vx) * PHYSICS.RESTITUTION;
+    } else if (newX > maxX) {
+      newX = maxX;
+      vel.vx = -Math.abs(vel.vx) * PHYSICS.RESTITUTION;
+    }
+
+    if (newY < pad) {
+      newY = pad;
+      vel.vy = Math.abs(vel.vy) * PHYSICS.RESTITUTION;
+    } else if (newY > maxY) {
+      newY = maxY;
+      vel.vy = -Math.abs(vel.vy) * PHYSICS.RESTITUTION;
+    }
+
+    // Yes-button collision
+    const yesCollision = resolveYesButtonCollision(
+      newX,
+      newY,
+      noW,
+      noH,
+      vel.vx,
+      vel.vy,
+    );
+    if (yesCollision) {
+      newX = yesCollision.x;
+      newY = yesCollision.y;
+      vel.vx = yesCollision.vx;
+      vel.vy = yesCollision.vy;
+    }
+
+    // Clamp again after Yes-button push (in case it pushed us out of bounds)
+    newX = Math.max(pad, Math.min(newX, maxX));
+    newY = Math.max(pad, Math.min(newY, maxY));
+
+    // Apply friction
+    vel.vx *= PHYSICS.FRICTION;
+    vel.vy *= PHYSICS.FRICTION;
+
+    // Update refs and state
+    positionRef.current = { x: newX, y: newY };
+    velocityRef.current = vel;
+    setNoButtonPosition({ x: newX, y: newY });
+
+    // Continue animating or stop
+    const speed = Math.sqrt(vel.vx ** 2 + vel.vy ** 2);
+    if (speed > PHYSICS.MIN_VELOCITY) {
+      animFrameRef.current = requestAnimationFrame(physicsStep);
+    } else {
+      vel.vx = 0;
+      vel.vy = 0;
+      animFrameRef.current = null;
+    }
+  }, [resolveYesButtonCollision]);
+
+  /**
+   * Launch the No button away from the pointer position with physics-based
+   * velocity. Starts (or restarts) the animation loop.
+   */
+  const launchNoButton = useCallback(
+    (pointerX: number, pointerY: number) => {
+      if (!noButtonRef.current || !buttonContainerRef.current) return;
+
+      const buttonRect = noButtonRef.current.getBoundingClientRect();
+      const buttonCenterX = buttonRect.left + buttonRect.width / 2;
+      const buttonCenterY = buttonRect.top + buttonRect.height / 2;
+
+      // Direction away from pointer
+      let angle = Math.atan2(buttonCenterY - pointerY, buttonCenterX - pointerX);
+
+      // Add some randomness to the angle (up to +-45 degrees)
+      angle += (Math.random() - 0.5) * (Math.PI / 2);
+
+      const speed = PHYSICS.LAUNCH_SPEED + Math.random() * 8;
+      velocityRef.current = {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+      };
+
+      // Start the animation loop if not already running
+      if (animFrameRef.current === null) {
+        animFrameRef.current = requestAnimationFrame(physicsStep);
+      }
+    },
+    [physicsStep],
+  );
+
   const moveNoButton = (pointerX: number, pointerY: number) => {
     if (!noButtonRef.current || !buttonContainerRef.current) return;
 
     const buttonRect = noButtonRef.current.getBoundingClientRect();
-    const containerRect = buttonContainerRef.current.getBoundingClientRect();
-    
     const buttonCenterX = buttonRect.left + buttonRect.width / 2;
     const buttonCenterY = buttonRect.top + buttonRect.height / 2;
 
     const distance = calculateDistance(pointerX, pointerY, buttonCenterX, buttonCenterY);
 
-    const DODGE_THRESHOLD_PX = 180;
-    if (distance < DODGE_THRESHOLD_PX) {
+    if (distance < PHYSICS.DODGE_THRESHOLD) {
       if (!isChasing) {
         setIsChasing(true);
         countRef.current += 1;
@@ -96,21 +318,8 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
         startPoliceFlicker();
       }
 
-      const angle = Math.atan2(buttonCenterY - pointerY, buttonCenterX - pointerX);
-      
-      const moveDistance = 400 + Math.random() * 300;
-      let newX = buttonCenterX + Math.cos(angle) * moveDistance;
-      let newY = buttonCenterY + Math.sin(angle) * moveDistance;
-
-      const padding = 20;
-      const maxX = containerRect.width - buttonRect.width - padding;
-      const maxY = containerRect.height - buttonRect.height - padding;
-      
-      newX = Math.max(padding, Math.min(newX - containerRect.left, maxX));
-      newY = Math.max(padding, Math.min(newY - containerRect.top, maxY));
-
-      setNoButtonPosition({ x: newX, y: newY });
-    } else if (distance > DODGE_THRESHOLD_PX * 2.5) {
+      launchNoButton(pointerX, pointerY);
+    } else if (distance > PHYSICS.DODGE_THRESHOLD * PHYSICS.CHASE_STOP_MULTIPLIER) {
       // Stop chase mode when far away
       if (isChasing) {
         setIsChasing(false);
@@ -178,6 +387,10 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
       if (messageTimerRef.current) {
         clearTimeout(messageTimerRef.current);
       }
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
     };
   }, []);
 
@@ -187,20 +400,40 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
     const currentCount = countRef.current;
     const message = NO_CLICK_MESSAGES[currentCount % NO_CLICK_MESSAGES.length];
     setNoClickMessage(message!);
-    
+
     countRef.current += 1;
     setNoClickCount(countRef.current);
 
-    // Move the button to a random position within the container
-    if (buttonContainerRef.current && noButtonRef.current) {
-      const containerRect = buttonContainerRef.current.getBoundingClientRect();
+    // Launch the button in a random direction on click
+    if (noButtonRef.current) {
       const buttonRect = noButtonRef.current.getBoundingClientRect();
-      const padding = 20;
-      const maxX = containerRect.width - buttonRect.width - padding;
-      const maxY = containerRect.height - buttonRect.height - padding;
-      const newX = padding + Math.random() * Math.max(0, maxX - padding);
-      const newY = padding + Math.random() * Math.max(0, maxY - padding);
-      setNoButtonPosition({ x: newX, y: newY });
+      const buttonCenterX = buttonRect.left + buttonRect.width / 2;
+      const buttonCenterY = buttonRect.top + buttonRect.height / 2;
+
+      // Random direction
+      const angle = Math.random() * Math.PI * 2;
+      const speed = PHYSICS.LAUNCH_SPEED + Math.random() * 10;
+      velocityRef.current = {
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+      };
+
+      // Also nudge away from center of container for variety
+      if (buttonContainerRef.current) {
+        const containerRect = buttonContainerRef.current.getBoundingClientRect();
+        const containerCenterX = containerRect.left + containerRect.width / 2;
+        const containerCenterY = containerRect.top + containerRect.height / 2;
+        const awayAngle = Math.atan2(
+          buttonCenterY - containerCenterY,
+          buttonCenterX - containerCenterX,
+        );
+        velocityRef.current.vx += Math.cos(awayAngle) * 5;
+        velocityRef.current.vy += Math.sin(awayAngle) * 5;
+      }
+
+      if (animFrameRef.current === null) {
+        animFrameRef.current = requestAnimationFrame(physicsStep);
+      }
     }
 
     // Clear the message after 2 seconds
@@ -260,9 +493,23 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
               </div>
             </div>
 
-            <div ref={buttonContainerRef} className="relative h-32 w-full">
+            <div
+              ref={buttonContainerRef}
+              className="relative h-48 w-full"
+              onMouseMove={handleMouseMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={(e: React.TouchEvent) => {
+                if (e.touches.length > 0) {
+                  const touch = e.touches[0];
+                  if (touch) {
+                    moveNoButton(touch.clientX, touch.clientY);
+                  }
+                }
+              }}
+            >
               <div className="absolute inset-0 flex items-center justify-center">
                 <button
+                  ref={yesButtonRef}
                   type="button"
                   onClick={handleYesClick}
                   className="group relative px-12 py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-500 hover:from-rose-600 hover:via-pink-600 hover:to-rose-600 text-white text-xl font-bold rounded-full shadow-2xl shadow-rose-400/50 transition-all duration-300 hover:scale-110 hover:shadow-rose-500/60 active:scale-95 z-10 overflow-hidden"
@@ -278,21 +525,11 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
                 ref={noButtonRef}
                 type="button"
                 onClick={handleNoClick}
-                onMouseMove={handleMouseMove}
-                onTouchStart={handleTouchStart}
-                onTouchMove={(e: React.TouchEvent) => {
-                  if (e.touches.length > 0) {
-                    const touch = e.touches[0];
-                    if (touch) {
-                      moveNoButton(touch.clientX, touch.clientY);
-                    }
-                  }
-                }}
                 style={{
                   position: 'absolute',
                   left: `${noButtonPosition.x}px`,
                   top: `${noButtonPosition.y}px`,
-                  transition: isYesClicked ? 'transform 0.5s ease-in, opacity 0.4s ease-in' : 'all 0.1s ease-out',
+                  transition: isYesClicked ? 'transform 0.5s ease-in, opacity 0.4s ease-in' : 'none',
                   transform: `scale(${buttonScale}) rotate(${isYesClicked ? '180deg' : '0deg'})`,
                   opacity: noButtonOpacity,
                   backgroundColor: policeFlicker ? '#ef4444' : '#3b82f6',
