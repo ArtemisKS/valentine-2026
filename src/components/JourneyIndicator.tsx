@@ -18,10 +18,20 @@ const STEPS: { key: Step; label: string }[] = [
 ];
 
 function emitSparkles(dot: HTMLElement) {
+  // Check for reduced motion preference
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) return;
+
+  // Check if device is low-end/mobile (basic heuristic)
+  const isLowPower = window.navigator.hardwareConcurrency <= 4;
+  
   const rect = dot.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
-  const count = 10 + Math.floor(Math.random() * 5); // 10-14 particles
+  
+  // Significantly reduce particle count for performance
+  const baseCount = isLowPower ? 3 : 5;
+  const count = baseCount + Math.floor(Math.random() * 3); // 3-5 or 5-8 particles
 
   for (let i = 0; i < count; i++) {
     const particle = document.createElement('div');
@@ -40,6 +50,7 @@ function emitSparkles(dot: HTMLElement) {
       pointerEvents: 'none',
       zIndex: '9999',
       opacity: '0.9',
+      willChange: 'transform, opacity', // Hint to browser
     });
 
     document.body.appendChild(particle);
@@ -49,7 +60,7 @@ function emitSparkles(dot: HTMLElement) {
       continue;
     }
 
-    particle.animate(
+    const animation = particle.animate(
       [
         { transform: 'translate(-50%, -50%) scale(1)', opacity: 0.9 },
         {
@@ -58,7 +69,9 @@ function emitSparkles(dot: HTMLElement) {
         },
       ],
       { duration: 700 + Math.random() * 400, easing: 'ease-out', fill: 'forwards' },
-    ).onfinish = () => particle.remove();
+    );
+
+    animation.onfinish = () => particle.remove();
   }
 }
 
@@ -74,21 +87,30 @@ export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep,
   useEffect(() => {
     if (!canNavigate) return;
 
-    let cycleCount = 0;
+    // Check visibility to pause when tab is inactive
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Clear interval will happen on cleanup or re-effect
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Increase interval to reduce frequency (from 4s to 6s)
     const interval = setInterval(() => {
-      cycleCount++;
-      // Fire particles every 2nd cycle (every 4 seconds)
-      if (cycleCount % 2 !== 0) return;
+      if (document.hidden) return;
 
       STEPS.forEach((step, index) => {
         const isCurrent = index === currentIndex;
         if (isCurrent) return; // don't sparkle the active dot
         const dot = dotRefs.current[index];
-        if (dot) emitSparkles(dot);
+        if (dot) requestAnimationFrame(() => emitSparkles(dot));
       });
-    }, 2000); // matches animation duration
+    }, 6000); 
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [canNavigate, currentIndex]);
 
   return (
