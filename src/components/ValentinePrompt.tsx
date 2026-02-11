@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { config } from '../../config/config';
+import { startButtonPulseAndParticles } from '../utils/buttonPulseEmit';
 
 interface ValentinePromptProps {
   onYes: (noCount: number) => void;
@@ -38,6 +39,7 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
   const buttonContainerRef = useRef<HTMLDivElement>(null);
   const countRef = useRef(0);
   const messageTimerRef = useRef<number | null>(null);
+  const pulseCleanupRef = useRef<(() => void) | null>(null);
 
   // Physics state stored in refs for use inside requestAnimationFrame
   const velocityRef = useRef({ vx: 0, vy: 0 });
@@ -68,6 +70,11 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
     }
     // Fallback: hide after animation duration
     setTimeout(() => setNoButtonOpacity(0), 850);
+
+    // Start heartbeat pulsation and particle emission on Yes button
+    if (yesButtonRef.current) {
+      pulseCleanupRef.current = startButtonPulseAndParticles(yesButtonRef.current);
+    }
 
     const duration = 3000;
     const animationEnd = Date.now() + duration;
@@ -363,6 +370,9 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
       if (animFrameRef.current !== null) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = null;
+      }
+      if (pulseCleanupRef.current) {
+        pulseCleanupRef.current();
       }
     };
   }, []);
