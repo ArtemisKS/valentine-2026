@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { ThemeToggle } from './ThemeToggle';
 
 type Step = 'intro' | 'question' | 'score' | 'letter' | 'valentine';
@@ -17,9 +17,79 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'valentine', label: 'Valentine' },
 ];
 
+function emitSparkles(dot: HTMLElement) {
+  const rect = dot.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const count = 10 + Math.floor(Math.random() * 5); // 10-14 particles
+
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('div');
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.8;
+    const distance = 18 + Math.random() * 20;
+    const size = 3 + Math.random() * 3;
+
+    Object.assign(particle.style, {
+      position: 'fixed',
+      left: `${cx}px`,
+      top: `${cy}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+      borderRadius: '50%',
+      backgroundColor: 'rgb(251, 113, 133)', // rose-400
+      pointerEvents: 'none',
+      zIndex: '9999',
+      opacity: '0.9',
+    });
+
+    document.body.appendChild(particle);
+
+    if (!particle.animate) {
+      particle.remove();
+      continue;
+    }
+
+    particle.animate(
+      [
+        { transform: 'translate(-50%, -50%) scale(1)', opacity: 0.9 },
+        {
+          transform: `translate(calc(-50% + ${Math.cos(angle) * distance}px), calc(-50% + ${Math.sin(angle) * distance}px)) scale(0)`,
+          opacity: 0,
+        },
+      ],
+      { duration: 700 + Math.random() * 400, easing: 'ease-out', fill: 'forwards' },
+    ).onfinish = () => particle.remove();
+  }
+}
+
 export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep, onNavigate, progress }) => {
   const currentIndex = STEPS.findIndex(s => s.key === currentStep);
   const canNavigate = !!onNavigate;
+  const dotRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const setDotRef = useCallback((index: number) => (el: HTMLDivElement | null) => {
+    dotRefs.current[index] = el;
+  }, []);
+
+  useEffect(() => {
+    if (!canNavigate) return;
+
+    let cycleCount = 0;
+    const interval = setInterval(() => {
+      cycleCount++;
+      // Fire particles every 2nd cycle (every 4 seconds)
+      if (cycleCount % 2 !== 0) return;
+
+      STEPS.forEach((step, index) => {
+        const isCurrent = index === currentIndex;
+        if (isCurrent) return; // don't sparkle the active dot
+        const dot = dotRefs.current[index];
+        if (dot) emitSparkles(dot);
+      });
+    }, 2000); // matches animation duration
+
+    return () => clearInterval(interval);
+  }, [canNavigate, currentIndex]);
 
   return (
     <div className="sticky top-0 z-50 bg-white/70 dark:bg-gray-900/80 backdrop-blur-md border-b border-rose-200/30 dark:border-white/10 shadow-sm transition-colors duration-500">
@@ -47,13 +117,14 @@ export const JourneyIndicator: React.FC<JourneyIndicatorProps> = ({ currentStep,
                 }`}
               >
                 <div
+                  ref={setDotRef(index)}
                   className={`rounded-full transition-all duration-300 ${
                     isCurrent
                       ? 'w-3 h-3 bg-rose-500 shadow-lg shadow-rose-400/50'
                       : isCompleted
                       ? 'w-2.5 h-2.5 bg-rose-400'
                       : 'w-2 h-2 bg-rose-200/60 dark:bg-gray-600'
-                  } ${canClick ? 'group-hover:scale-125 group-hover:shadow-md group-hover:shadow-rose-400/40' : ''}`}
+                  } ${canClick ? 'group-hover:scale-125 group-hover:shadow-md group-hover:shadow-rose-400/40 animate-[dot-pulse_2s_ease-in-out_infinite]' : ''}`}
                 />
                 <span
                   className={`text-[8px] sm:text-[10px] transition-all duration-300 ${
