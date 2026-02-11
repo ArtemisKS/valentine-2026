@@ -1,12 +1,22 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Valentine's Day Quiz</title>
-    <script type="module" crossorigin src="/valentine-2026/assets/index-DbqOBXPJ.js"></script>
-    <link rel="stylesheet" crossorigin href="/valentine-2026/assets/index-C1a5Dz4L.css">
+    <script>
+      // Set theme class before first paint to prevent flash of wrong theme.
+      // Follows: stored preference > system preference > light default.
+      (function() {
+        var s = localStorage.getItem('theme');
+        if (s === 'dark' || (!s && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/valentine-2026/assets/index-ktVU1YnD.js"></script>
+    <link rel="stylesheet" crossorigin href="/valentine-2026/assets/index-jXyVKmbo.css">
   </head>
   <body>
     <div id="root"></div>
