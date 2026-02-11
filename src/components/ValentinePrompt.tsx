@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { config } from '../../config/config';
 import { startButtonPulseAndParticles } from '../utils/buttonPulseEmit';
+import { dissipateElement } from '../utils/textDissipate';
 
 interface ValentinePromptProps {
   onYes: (noCount: number) => void;
@@ -40,6 +41,9 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
   const countRef = useRef(0);
   const messageTimerRef = useRef<number | null>(null);
   const pulseCleanupRef = useRef<(() => void) | null>(null);
+  const subtitleRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLParagraphElement>(null);
+  const yesAnimatedRef = useRef(false);
 
   // Physics state stored in refs for use inside requestAnimationFrame
   const velocityRef = useRef({ vx: 0, vy: 0 });
@@ -47,33 +51,42 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
   const animFrameRef = useRef<number | null>(null);
 
   const handleYesClick = () => {
-    setIsChasing(false);
+    // Guard: only run non-confetti animations once
+    if (!yesAnimatedRef.current) {
+      yesAnimatedRef.current = true;
 
-    // Stop physics animation
-    velocityRef.current = { vx: 0, vy: 0 };
-    if (animFrameRef.current !== null) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
+      setIsChasing(false);
 
-    // Animate No button: spin + shrink + fade out via Web Animations API
-    // (WAAPI overrides CSS animation's transform while it keeps providing background-color)
-    const noBtn = noButtonRef.current;
-    if (noBtn && noBtn.animate) {
-      noBtn.animate(
-        [
-          { transform: 'scale(1) rotate(0deg)', opacity: 1 },
-          { transform: 'scale(0) rotate(720deg)', opacity: 0 },
-        ],
-        { duration: 800, easing: 'ease-in', fill: 'forwards' },
-      );
-    }
-    // Fallback: hide after animation duration
-    setTimeout(() => setNoButtonOpacity(0), 850);
+      // Stop physics animation
+      velocityRef.current = { vx: 0, vy: 0 };
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
 
-    // Start heartbeat pulsation and particle emission on Yes button
-    if (yesButtonRef.current) {
-      pulseCleanupRef.current = startButtonPulseAndParticles(yesButtonRef.current);
+      // Animate No button: spin + shrink + fade out via Web Animations API
+      // (WAAPI overrides CSS animation's transform while it keeps providing background-color)
+      const noBtn = noButtonRef.current;
+      if (noBtn && noBtn.animate) {
+        noBtn.animate(
+          [
+            { transform: 'scale(1) rotate(0deg)', opacity: 1 },
+            { transform: 'scale(0) rotate(720deg)', opacity: 0 },
+          ],
+          { duration: 800, easing: 'ease-in', fill: 'forwards' },
+        );
+      }
+      // Fallback: hide after animation duration
+      setTimeout(() => setNoButtonOpacity(0), 850);
+
+      // Start heartbeat pulsation and particle emission on Yes button
+      if (yesButtonRef.current) {
+        pulseCleanupRef.current = startButtonPulseAndParticles(yesButtonRef.current);
+      }
+
+      // Explode subtitle and hint text into particles
+      if (subtitleRef.current) dissipateElement(subtitleRef.current);
+      if (hintRef.current) dissipateElement(hintRef.current);
     }
 
     const duration = 3000;
@@ -469,7 +482,7 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-rose-900 dark:text-rose-100 mb-4">
                 {config.valentine.question}
               </h1>
-              <div className="bg-white/20 dark:bg-white/[0.06] backdrop-blur-md rounded-2xl p-4 border border-white/40 dark:border-white/[0.08] shadow-inner inline-block">
+              <div ref={subtitleRef} className="bg-white/20 dark:bg-white/[0.06] backdrop-blur-md rounded-2xl p-4 border border-white/40 dark:border-white/[0.08] shadow-inner inline-block">
                 <p className="text-lg sm:text-xl text-rose-900 dark:text-rose-100 font-medium">
                   {config.valentine.subtitle} 💕
                 </p>
@@ -529,7 +542,7 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
               </div>
             )}
 
-            <p className="mt-12 sm:mt-16 text-xs text-rose-700 dark:text-rose-300 font-medium bg-white/20 dark:bg-white/[0.06] backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40 dark:border-white/[0.08]">
+            <p ref={hintRef} className="mt-12 sm:mt-16 text-xs text-rose-700 dark:text-rose-300 font-medium bg-white/20 dark:bg-white/[0.06] backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40 dark:border-white/[0.08]">
               {config.valentine.hintText} <span className="not-italic">😏</span>
             </p>
           </div>
