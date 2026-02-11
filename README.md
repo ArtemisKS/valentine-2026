@@ -3,8 +3,6 @@
 A white-label, interactive Valentine's Day quiz that generates a personalized love letter based on the recipient's
 answers. Built with React, Vite, and Tailwind CSS.
 
-**See it live: [artemisks.github.io/valentine-2026](https://artemisks.github.io/valentine-2026/)**
-
 **Fork it, customize it, deploy to your own Github Pages — send it to your loved one!!!**
 
 [Русский](./docs/translations/README_RU.md) | [中文](./docs/translations/README_CN.md)
