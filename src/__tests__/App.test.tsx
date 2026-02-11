@@ -42,7 +42,7 @@ describe('App', () => {
 
     const answerButtons = screen.getAllByRole('button').filter(btn => {
       const text = btn.textContent || '';
-      return text && !text.match(/let's begin|next|previous|submit/i);
+      return text && !text.match(/let's begin|next|previous|submit|welcome|quiz|score|letter|valentine/i);
     });
 
     if (answerButtons.length > 0 && answerButtons[0]) {
@@ -64,7 +64,7 @@ describe('App', () => {
 
     const answerButtons = screen.getAllByRole('button').filter(btn => {
       const text = btn.textContent || '';
-      return text && !text.match(/let's begin|next|previous|submit/i);
+      return text && !text.match(/let's begin|next|previous|submit|welcome|quiz|score|letter|valentine/i);
     });
 
     if (answerButtons.length > 0 && answerButtons[0]) {
