@@ -483,18 +483,26 @@ export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePr
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-rose-900 dark:text-rose-100 mb-4">
                 {config.valentine.question}
               </h1>
-            {!hideNoButton && (
-              <div ref={subtitleRef} className="bg-white/20 dark:bg-white/[0.06] backdrop-blur-md rounded-2xl p-4 border border-white/40 dark:border-white/[0.08] shadow-inner inline-block">
-                <p className="text-lg sm:text-xl text-rose-900 dark:text-rose-100 font-medium">
-                  {config.valentine.subtitle} 💕
-                </p>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateRows: hideNoButton ? '0fr' : '1fr',
+                  transition: 'grid-template-rows 500ms ease-in-out 300ms',
+                }}
+              >
+                <div style={{ overflow: 'hidden' }}>
+                  <div ref={subtitleRef} className="bg-white/20 dark:bg-white/[0.06] backdrop-blur-md rounded-2xl p-4 border border-white/40 dark:border-white/[0.08] shadow-inner inline-block">
+                    <p className="text-lg sm:text-xl text-rose-900 dark:text-rose-100 font-medium">
+                      {config.valentine.subtitle} 💕
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
             </div>
 
             <div
               ref={buttonContainerRef}
-              className="relative h-72 -mx-6 sm:-mx-10 -mt-8 sm:-mt-12 -mb-10 sm:-mb-14"
+              className="relative h-72 -mx-6 sm:-mx-10 -mt-10 sm:-mt-14 -mb-12 sm:-mb-16"
               onMouseMove={handleMouseMove}
               onTouchStart={handleTouchStart}
               onTouchMove={(e: React.TouchEvent) => {
@@ -545,23 +553,25 @@ export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePr
               </div>
             )}
 
-            {!hideNoButton && (
-              <p ref={hintRef} className="mt-12 sm:mt-16 text-xs text-rose-700 dark:text-rose-300 font-medium bg-white/20 dark:bg-white/[0.06] backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40 dark:border-white/[0.08]">
-                {config.valentine.hintText} <span className="not-italic">😏</span>
-              </p>
-            )}
+            <div className="relative mt-10 sm:mt-14 flex items-center justify-center" style={{ minHeight: '2.75rem' }}>
+              {!hideNoButton && (
+                <p ref={hintRef} className="text-xs text-rose-700 dark:text-rose-300 font-medium bg-white/20 dark:bg-white/[0.06] backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40 dark:border-white/[0.08]">
+                  {config.valentine.hintText} <span className="not-italic">😏</span>
+                </p>
+              )}
 
-            {hideNoButton && onPlayGame && (
-              <div className="mt-6 animate-[fadeIn_0.5s_ease-out_1s_both]">
-                <button
-                  type="button"
-                  onClick={onPlayGame}
-                  className="px-8 py-3 bg-white/40 dark:bg-white/10 hover:bg-white/60 dark:hover:bg-white/20 text-rose-700 dark:text-rose-300 text-sm font-bold rounded-full shadow-lg border border-rose-200/60 dark:border-white/10 transition-all duration-200 hover:scale-105 active:scale-95 backdrop-blur-sm"
-                >
-                  {config.game.playButton} 🎮
-                </button>
-              </div>
-            )}
+              {hideNoButton && onPlayGame && (
+                <div className="animate-[fadeIn_0.5s_ease-out_1s_both]">
+                  <button
+                    type="button"
+                    onClick={onPlayGame}
+                    className="px-8 py-3 bg-white/40 dark:bg-white/10 hover:bg-white/60 dark:hover:bg-white/20 text-rose-700 dark:text-rose-300 text-sm font-bold rounded-full shadow-lg border border-rose-200/60 dark:border-white/10 transition-all duration-200 hover:scale-105 active:scale-95 backdrop-blur-sm"
+                  >
+                    {config.game.playButton} 🎮
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
