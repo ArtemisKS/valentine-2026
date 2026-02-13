@@ -9,14 +9,29 @@
 // ─── Audio context (lazy singleton) ─────────────────────────────────
 
 let audioCtx: AudioContext | null = null;
+let audioUnlocked = false;
 
 function getAudioCtx(): AudioContext {
   if (!audioCtx) {
-    audioCtx = new AudioContext();
+    audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
   }
   // Resume if suspended (browsers require user gesture first)
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
+  }
+  // iOS Safari workaround: play a silent buffer on first interaction to
+  // unlock the audio pipeline. Without this, the first real sound is swallowed.
+  if (!audioUnlocked) {
+    audioUnlocked = true;
+    try {
+      const buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start(0);
+    } catch {
+      // ignore — unlock is best-effort
+    }
   }
   return audioCtx;
 }
@@ -106,9 +121,14 @@ function isMobile(): boolean {
 
 // ─── Game sound effects ─────────────────────────────────────────────
 
-/** Quick ascending blip when the player flaps. Muted on mobile. */
+/** Quick ascending blip when the player flaps. Softer on mobile. */
 export function sfxFlap(): void {
-  if (isMobile()) return;
+  if (isMobile()) {
+    // Softer sine tone for mobile — louder than initial attempt so it's
+    // actually audible on iOS speakers (0.04 was inaudible).
+    playTone(400, 0.07, 'sine', 0.10, 540);
+    return;
+  }
   playTone(420, 0.07, 'square', 0.06, 650);
 }
 

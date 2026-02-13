@@ -92,6 +92,15 @@ const BOSS_SHOOT_INTERVAL = 90; // frames (~1.5 seconds at 60fps)
 const BOSS_ADVANCE_SPEED = 0.4; // px per frame the player advances toward boss
 const FRAME_MS = 1000 / 110; // physics step duration — targets 110 ticks/sec on all devices
 
+// ─── Mobile-adaptive physics ──────────────────────────────────────────
+// On mobile, gravity and flap feel too aggressive because the handheld
+// screen makes motion feel exaggerated. Softer constants give the smooth,
+// floaty Flappy Bird feel the user expects on touch devices.
+const _isMobileGame = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+const GRAVITY_EFF = _isMobileGame ? 0.18 : GRAVITY;
+const FLAP_EFF = _isMobileGame ? -2.7 : FLAP_STRENGTH;
+const DT_CAP = _isMobileGame ? 3 : 6;
+
 // Module-level best score — survives component unmount/remount (same browser session)
 let sessionBestScore = 0;
 
@@ -498,7 +507,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const flap = useCallback(() => {
     if (screenRef.current === 'playing') {
       hasFlappedRef.current = true;
-      playerRef.current.vy = FLAP_STRENGTH;
+      playerRef.current.vy = FLAP_EFF;
       sfxFlap();
     }
   }, []);
@@ -531,7 +540,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     const now = performance.now();
     const elapsed = Math.min(now - lastTimeRef.current, 100); // cap to avoid spiral
     lastTimeRef.current = now;
-    const dt = Math.min(elapsed / FRAME_MS, 6); // float ratio, no rounding
+    const dt = Math.min(elapsed / FRAME_MS, DT_CAP); // float ratio, no rounding
 
     const { w, h } = canvasSizeRef.current;
     const currentScreen = screenRef.current;
@@ -591,8 +600,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
         // Gravity with exact semi-implicit Euler integration over dt steps:
         // Δy = v₀·dt + G·dt·(dt+1)/2 matches running dt discrete steps exactly.
         const vy_old = player.vy;
-        player.vy += GRAVITY * dt;
-        player.y += vy_old * dt + GRAVITY * dt * (dt + 1) / 2;
+        player.vy += GRAVITY_EFF * dt;
+        player.y += vy_old * dt + GRAVITY_EFF * dt * (dt + 1) / 2;
 
         // Move pillars
         const pillars = pillarsRef.current;
