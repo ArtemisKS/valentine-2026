@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { EmojiReactionQuestion as EmojiReactionQuestionType } from '../types/Question';
 import { triggerSelectionSequence } from '../utils/selectionBurst';
+import { config } from '../../config/config';
 
 interface EmojiReactionQuestionProps {
   question: EmojiReactionQuestionType;
@@ -14,6 +15,16 @@ export const EmojiReactionQuestion: React.FC<EmojiReactionQuestionProps> = ({
   onAnswer,
 }) => {
   const [animatingSegment, setAnimatingSegment] = useState<string | null>(null);
+
+  // Shuffle feedback messages once per mount so each option gets a unique message
+  const feedbackMessages = useMemo(() => {
+    const msgs = [...config.emojiReactionFeedback];
+    for (let i = msgs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [msgs[i], msgs[j]] = [msgs[j], msgs[i]];
+    }
+    return msgs;
+  }, []);
 
   const handleClick = (letterSegment: string, e: React.MouseEvent<HTMLButtonElement>) => {
     setAnimatingSegment(letterSegment);
@@ -81,11 +92,22 @@ export const EmojiReactionQuestion: React.FC<EmojiReactionQuestionProps> = ({
         })}
       </div>
 
-      {selectedAnswer && (
-        <p className="text-center text-sm sm:text-base text-gray-600 dark:text-gray-400 animate-fade-in">
-          Perfect choice — your emotions shine through
-        </p>
-      )}
+      {/* Reserve space so the card doesn't resize when feedback appears */}
+      <p
+        className={`text-center text-sm sm:text-base transition-opacity duration-300 ${
+          selectedAnswer
+            ? 'text-emerald-600 dark:text-emerald-400 opacity-100'
+            : 'opacity-0'
+        }`}
+        aria-live="polite"
+      >
+        {selectedAnswer
+          ? feedbackMessages[
+              question.options.findIndex((o) => o.letterSegment === selectedAnswer) %
+                feedbackMessages.length
+            ]
+          : feedbackMessages[0]}
+      </p>
     </div>
   );
 };

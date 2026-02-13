@@ -89,6 +89,15 @@ export const config = {
     ],
   },
 
+  // ─── Emoji reaction feedback ───────────────────────────────────────
+  /** Positive feedback messages shown after selecting an emoji reaction (shuffled per mount) */
+  emojiReactionFeedback: [
+    'Perfect choice — your emotions shine through',
+    'Love that energy — it says a lot about you',
+    'Great pick — I can feel the warmth from here',
+    'Beautiful answer — that one made me smile',
+  ],
+
   // ─── Footer ────────────────────────────────────────────────────────
   footer: {
     /** Footer text template. {sender} and {recipient} are replaced automatically. */
