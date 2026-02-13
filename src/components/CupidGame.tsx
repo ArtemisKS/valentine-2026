@@ -1,6 +1,11 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { config } from '../../config/config';
+import {
+  sfxFlap, sfxCollectHeart, sfxPillarPass, sfxDie,
+  sfxBossShoot, sfxBossExplode, sfxBossFreeze, sfxLevelComplete, sfxVictory,
+  sfxCountdownTick, sfxCountdownGo,
+} from '../utils/gameFeedback';
 
 interface CupidGameProps {
   onBack: () => void;
@@ -8,7 +13,7 @@ interface CupidGameProps {
 
 // ─── Game types ──────────────────────────────────────────────────────
 
-type GameScreen = 'countdown' | 'playing' | 'levelComplete' | 'gameOver' | 'bossExplode' | 'victory';
+type GameScreen = 'countdown' | 'playing' | 'levelComplete' | 'gameOver' | 'bossFreeze' | 'bossExplode' | 'victory';
 
 interface Player {
   x: number;
@@ -431,6 +436,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     if (screenRef.current === 'playing') {
       hasFlappedRef.current = true;
       playerRef.current.vy = FLAP_STRENGTH;
+      sfxFlap();
     }
   }, []);
 
@@ -489,8 +495,11 @@ export function CupidGame({ onBack }: CupidGameProps) {
         countdownRef.current--;
         setCountdown(countdownRef.current);
         if (countdownRef.current <= 0) {
+          sfxCountdownGo();
           screenRef.current = 'playing';
           setScreen('playing');
+        } else {
+          sfxCountdownTick();
         }
       }
 
@@ -529,6 +538,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             p.passed = true;
             scoreRef.current += 1;
             setScore(scoreRef.current);
+            sfxPillarPass();
           }
         }
 
@@ -541,6 +551,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             heart.collected = true;
             scoreRef.current += 3;
             setScore(scoreRef.current);
+            sfxCollectHeart();
           }
         }
 
@@ -553,6 +564,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             const topH = p.gapY - p.gapSize / 2;
             const bottomY = p.gapY + p.gapSize / 2;
             if (player.y < topH || player.y + player.height > bottomY) {
+              sfxDie();
               // Update best score
               if (scoreRef.current > bestScoreRef.current) {
                 bestScoreRef.current = scoreRef.current;
@@ -574,6 +586,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
         // Floor death — only when fully off-screen below
         if (player.y + player.height > h + PLAYER_SIZE) {
+          sfxDie();
           if (bossRef.current) {
             diedDuringBossRef.current = true;
           }
@@ -622,6 +635,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           boss.shootCooldown--;
           if (boss.shootCooldown <= 0) {
             boss.shootCooldown = adjustedInterval;
+            sfxBossShoot();
             projectilesRef.current.push({
               x: boss.x,
               y: boss.y + BOSS_SIZE / 2,
@@ -639,6 +653,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             const dx = player.x + player.width / 2 - (proj.x + PROJECTILE_SIZE / 2);
             const dy = player.y + player.height / 2 - (proj.y + PROJECTILE_SIZE / 2);
             if (Math.sqrt(dx * dx + dy * dy) < (player.width / 2 + PROJECTILE_SIZE / 2) * 0.8) {
+              sfxDie();
               if (scoreRef.current > bestScoreRef.current) {
                 bestScoreRef.current = scoreRef.current;
                 setBestScore(bestScoreRef.current);
@@ -651,7 +666,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             }
           }
 
-          // Player reaches boss — start explosion!
+          // Player reaches boss — freeze before explosion!
           const playerRight = player.x + player.width;
           const bossLeft = boss.x - BOSS_SIZE / 2;
           if (playerRight >= bossLeft) {
@@ -661,8 +676,9 @@ export function CupidGame({ onBack }: CupidGameProps) {
             }
             explodePosRef.current = { x: boss.x, y: boss.y };
             explodeTimerRef.current = 0;
-            screenRef.current = 'bossExplode';
-            setScreen('bossExplode');
+            sfxBossFreeze();
+            screenRef.current = 'bossFreeze';
+            setScreen('bossFreeze');
             rafRef.current = requestAnimationFrame(gameLoop);
             return;
           }
@@ -670,6 +686,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
         // Level complete (no boss level)
         if (!cfg.hasBoss && allPillarsPassed) {
+          sfxLevelComplete();
           screenRef.current = 'levelComplete';
           setScreen('levelComplete');
           rafRef.current = requestAnimationFrame(gameLoop);
@@ -696,12 +713,101 @@ export function CupidGame({ onBack }: CupidGameProps) {
       }
     }
 
+    // ── Boss freeze (pre-explosion) — still pause then trembling ──
+    if (currentScreen === 'bossFreeze') {
+      explodeTimerRef.current++;
+      const t = explodeTimerRef.current;
+      const stillDuration = 120;   // ~2s of true freeze (everything stops)
+      const trembleDuration = 180; // ~3s of boss trembling
+      const totalFreeze = stillDuration + trembleDuration; // ~5s total
+
+      // Draw frozen scene
+      drawScene(ctx, w, h);
+
+      // Darkening overlay — builds slowly during still, faster during tremble
+      const dark = isDark();
+      const overlayAlpha = t < stillDuration
+        ? 0.1 + (t / stillDuration) * 0.15
+        : 0.25 + ((t - stillDuration) / trembleDuration) * 0.15;
+      ctx.fillStyle = dark
+        ? `rgba(15, 23, 42, ${overlayAlpha})`
+        : `rgba(255, 241, 242, ${overlayAlpha})`;
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw player
+      const player = playerRef.current;
+      ctx.font = `${PLAYER_SIZE}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💘', player.x + player.width / 2, player.y + player.height / 2);
+
+      const { x: bx, y: by } = explodePosRef.current;
+
+      if (t <= stillDuration) {
+        // ── Still phase: boss frozen in place, slight pulse ──
+        const pulse = 1 + Math.sin(t * 0.15) * 0.03;
+        ctx.font = `${BOSS_SIZE * pulse}px serif`;
+        ctx.fillText('😈', bx, by);
+      } else {
+        // ── Tremble phase: boss shakes with increasing intensity ──
+        const trembleT = t - stillDuration;
+        const progress = trembleT / trembleDuration;
+        const intensity = progress * 12; // shake gets stronger
+        const shakeX = bx + (Math.random() - 0.5) * intensity;
+        const shakeY = by + (Math.random() - 0.5) * intensity;
+
+        // Boss flashes with increasing frequency
+        ctx.globalAlpha = 0.6 + Math.sin(trembleT * (0.3 + progress * 0.8)) * 0.4;
+        const sizeFlicker = 1 + Math.sin(trembleT * 0.4) * progress * 0.15;
+        ctx.font = `${BOSS_SIZE * sizeFlicker}px serif`;
+        ctx.fillText('😈', shakeX, shakeY);
+        ctx.globalAlpha = 1;
+
+        // Pulsing warning glow — grows during tremble
+        const glowRadius = 35 + progress * 25 + Math.sin(trembleT * 0.4) * 15;
+        const glowAlpha = 0.1 + progress * 0.35;
+        ctx.beginPath();
+        ctx.arc(bx, by, glowRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(239, 68, 68, ${glowAlpha})`;
+        ctx.fill();
+
+        // Inner glow ring
+        if (progress > 0.4) {
+          const innerAlpha = (progress - 0.4) * 0.5;
+          ctx.beginPath();
+          ctx.arc(bx, by, glowRadius * 0.6, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(251, 191, 36, ${innerAlpha})`;
+          ctx.fill();
+        }
+      }
+
+      // HUD
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.font = 'bold 16px system-ui, sans-serif';
+      ctx.fillStyle = dark ? '#fecdd3' : '#881337';
+      ctx.fillText(`${config.game.scoreLabel}: ${scoreRef.current}`, 12, 12);
+      ctx.textAlign = 'right';
+      ctx.fillText(`${config.game.levelLabel} ${levelRef.current + 1}`, w - 12, 12);
+
+      // Transition to explosion
+      if (t >= totalFreeze) {
+        explodeTimerRef.current = 0;
+        sfxBossExplode();
+        screenRef.current = 'bossExplode';
+        setScreen('bossExplode');
+      }
+
+      rafRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+
     // ── Boss explosion animation ──
     if (currentScreen === 'bossExplode') {
       explodeTimerRef.current++;
       const t = explodeTimerRef.current;
       const { x: bx, y: by } = explodePosRef.current;
-      const duration = 100; // ~1.7 seconds
+      const duration = 180; // ~3 seconds
 
       drawBackground(ctx, w, h);
 
@@ -712,54 +818,77 @@ export function CupidGame({ onBack }: CupidGameProps) {
       ctx.textBaseline = 'middle';
       ctx.fillText('💘', player.x + player.width / 2, player.y + player.height / 2);
 
-      // Expanding shockwave rings
-      const ringCount = 3;
+      // Expanding shockwave rings — more rings, bigger, thicker
+      const ringCount = 5;
       for (let i = 0; i < ringCount; i++) {
-        const delay = i * 12;
+        const delay = i * 15;
         const ringT = t - delay;
         if (ringT <= 0) continue;
-        const radius = ringT * 3;
-        const alpha = Math.max(0, 1 - ringT / 40);
+        const radius = ringT * 4;
+        const alpha = Math.max(0, 1 - ringT / 55);
         ctx.beginPath();
         ctx.arc(bx, by, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(239, 68, 68, ${alpha})`;
-        ctx.lineWidth = 3;
+        const r = i % 2 === 0 ? 239 : 251;
+        const g = i % 2 === 0 ? 68 : 146;
+        const b = i % 2 === 0 ? 68 : 243;
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        ctx.lineWidth = 4 - i * 0.5;
         ctx.stroke();
       }
 
       // Boss shrinks, spins, and fades
-      if (t < 50) {
-        const scale = Math.max(0, 1 - t / 50);
-        const rotation = t * 0.15;
+      if (t < 60) {
+        const scale = Math.max(0, 1 - t / 60);
+        const rotation = t * 0.2;
         ctx.save();
         ctx.translate(bx, by);
         ctx.rotate(rotation);
         ctx.globalAlpha = scale;
-        ctx.font = `${BOSS_SIZE * scale}px serif`;
+        ctx.font = `${BOSS_SIZE * (scale + 0.2)}px serif`;
         ctx.fillText('😈', 0, 0);
         ctx.restore();
         ctx.globalAlpha = 1;
       }
 
-      // Burst emojis flying outward
-      const bursts = ['💥', '✨', '💫', '⭐', '💥', '✨'];
+      // First wave — burst emojis flying outward (more of them, larger)
+      const bursts = ['💥', '✨', '💫', '⭐', '💥', '✨', '🔥', '💥', '⭐', '✨'];
       for (let i = 0; i < bursts.length; i++) {
-        const angle = (i / bursts.length) * Math.PI * 2 + t * 0.02;
-        const dist = t * 2.5;
+        const angle = (i / bursts.length) * Math.PI * 2 + t * 0.015;
+        const dist = t * 3;
         const alpha = Math.max(0, 1 - t / duration);
         const ex = bx + Math.cos(angle) * dist;
         const ey = by + Math.sin(angle) * dist;
         ctx.globalAlpha = alpha;
-        ctx.font = '24px serif';
+        ctx.font = '28px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(bursts[i]!, ex, ey);
       }
+
+      // Second wave — delayed inner burst
+      if (t > 25) {
+        const wave2 = ['💖', '💝', '💗', '💘', '💞', '💓'];
+        for (let i = 0; i < wave2.length; i++) {
+          const angle = (i / wave2.length) * Math.PI * 2 + Math.PI / 6;
+          const dist = (t - 25) * 2.2;
+          const alpha = Math.max(0, 1 - (t - 25) / (duration - 25));
+          const ex = bx + Math.cos(angle) * dist;
+          const ey = by + Math.sin(angle) * dist;
+          ctx.globalAlpha = alpha;
+          ctx.font = '22px serif';
+          ctx.fillText(wave2[i]!, ex, ey);
+        }
+      }
       ctx.globalAlpha = 1;
 
-      // Screen flash at start
-      if (t < 8) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * (1 - t / 8)})`;
+      // Screen flash — bigger and with a secondary pulse
+      if (t < 12) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * (1 - t / 12)})`;
+        ctx.fillRect(0, 0, w, h);
+      } else if (t > 25 && t < 35) {
+        // Secondary pulse flash
+        const flashT = (t - 25) / 10;
+        ctx.fillStyle = `rgba(251, 146, 243, ${0.3 * (1 - flashT)})`;
         ctx.fillRect(0, 0, w, h);
       }
 
@@ -775,6 +904,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
       // Transition to victory
       if (t >= duration) {
+        sfxVictory();
         screenRef.current = 'victory';
         setScreen('victory');
         triggerVictoryFireworks();
