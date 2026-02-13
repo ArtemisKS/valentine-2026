@@ -7,6 +7,7 @@ import { dissipateElement } from '../utils/textDissipate';
 interface ValentinePromptProps {
   onYes: (noCount: number) => void;
   hideNoButton?: boolean;
+  onPlayGame?: () => void;
 }
 
 /** Physics constants for the bouncing No button */
@@ -29,7 +30,7 @@ const PHYSICS = {
   CHASE_STOP_MULTIPLIER: 2.5,
 };
 
-export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
+export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePromptProps) {
   const [noButtonPosition, setNoButtonPosition] = useState({ x: 20, y: 70 });
   const [isChasing, setIsChasing] = useState(false);
   const [noButtonOpacity, setNoButtonOpacity] = useState(1);
@@ -545,6 +546,18 @@ export function ValentinePrompt({ onYes, hideNoButton }: ValentinePromptProps) {
             <p ref={hintRef} className="mt-12 sm:mt-16 text-xs text-rose-700 dark:text-rose-300 font-medium bg-white/20 dark:bg-white/[0.06] backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40 dark:border-white/[0.08]">
               {config.valentine.hintText} <span className="not-italic">😏</span>
             </p>
+
+            {hideNoButton && onPlayGame && (
+              <div className="mt-6 animate-[fadeIn_0.5s_ease-out_1s_both]">
+                <button
+                  type="button"
+                  onClick={onPlayGame}
+                  className="px-8 py-3 bg-white/40 dark:bg-white/10 hover:bg-white/60 dark:hover:bg-white/20 text-rose-700 dark:text-rose-300 text-sm font-bold rounded-full shadow-lg border border-rose-200/60 dark:border-white/10 transition-all duration-200 hover:scale-105 active:scale-95 backdrop-blur-sm"
+                >
+                  {config.game.playButton} 🎮
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

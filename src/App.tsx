@@ -9,6 +9,7 @@ import { NavigationButtons } from './components/NavigationButtons';
 import { ScoreReveal } from './components/ScoreReveal';
 import { LoveLetter } from './components/LoveLetter';
 import { ValentinePrompt } from './components/ValentinePrompt';
+import { CupidGame } from './components/CupidGame';
 import { Footer } from './components/Footer';
 import { JourneyIndicator } from './components/JourneyIndicator';
 import { questions } from '../config/content';
@@ -116,6 +117,9 @@ function quizReducer(state: QuizState, action: QuizAction): QuizState {
 
      case 'MARK_YES_CLICKED':
        return { ...state, yesClicked: true };
+
+     case 'SHOW_GAME':
+       return { ...state, step: 'game' };
 
      case 'RESTORE_STATE':
        return action.state;
@@ -309,9 +313,18 @@ export default function App() {
               console.error('Failed to send quiz answers:', error);
             }
           }}
+          onPlayGame={() => dispatch({ type: 'SHOW_GAME' })}
         />
         <Footer />
       </div>
+    );
+  }
+
+  if (state.step === 'game') {
+    return (
+      <CupidGame
+        onBack={() => dispatch({ type: 'NAVIGATE_TO', step: 'valentine', questionIndex: 0 })}
+      />
     );
   }
 
