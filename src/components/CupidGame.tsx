@@ -67,8 +67,8 @@ interface LevelConfig {
 
 const LEVELS: LevelConfig[] = [
   { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 3, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
-  { pillarCount: 8, gapSize: 210, speed: 1.6, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.5, hasBoss: false },
-  { pillarCount: 10, gapSize: 190, speed: 1.7, heartCount: 5, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
+  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
+  { pillarCount: 10, gapSize: 200, speed: 1.65, heartCount: 5, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -188,6 +188,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const countdownRef = useRef(3);
   const countdownTimerRef = useRef(0);
   const hasFlappedRef = useRef(false);
+  const diedDuringBossRef = useRef(false);
 
   const playerRef = useRef<Player>({ x: 80, y: 200, vy: 0, width: PLAYER_SIZE, height: PLAYER_SIZE });
   const pillarsRef = useRef<Pillar[]>([]);
@@ -375,25 +376,41 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
   // ─── Init level ─────────────────────────────────────────────────
 
-  const initLevel = useCallback((lvl: number, resetScore: boolean) => {
+  const initLevel = useCallback((lvl: number, resetScore: boolean, bossRespawn?: boolean) => {
     const cfg = LEVELS[lvl]!;
-    const h = canvasSizeRef.current.h;
+    const { w, h } = canvasSizeRef.current;
     playerRef.current = { x: 80, y: h * 0.4, vy: 0, width: PLAYER_SIZE, height: PLAYER_SIZE };
-    pillarsRef.current = generatePillars(cfg, h);
-    heartsRef.current = generateHearts(pillarsRef.current, cfg.heartCount);
-    bossRef.current = null;
     projectilesRef.current = [];
     frameRef.current = 0;
     hasFlappedRef.current = false;
+    diedDuringBossRef.current = false;
     screenRef.current = 'countdown';
     countdownRef.current = 3;
     countdownTimerRef.current = 0;
+
+    if (bossRespawn && cfg.hasBoss) {
+      // Skip pillars — go straight to boss fight
+      pillarsRef.current = pillarsRef.current.map(p => ({ ...p, passed: true, x: -100 }));
+      heartsRef.current = [];
+      bossRef.current = {
+        x: w - 80,
+        y: h / 2,
+        health: 1,
+        maxHealth: 1,
+        phase: 0,
+        timer: 0,
+        shootCooldown: BOSS_SHOOT_INTERVAL,
+      };
+    } else {
+      pillarsRef.current = generatePillars(cfg, h);
+      heartsRef.current = generateHearts(pillarsRef.current, cfg.heartCount);
+      bossRef.current = null;
+    }
+
     if (resetScore) {
-      // Restore to the score earned up to this level (not 0)
       scoreRef.current = levelStartScoreRef.current;
       setScore(scoreRef.current);
     } else {
-      // Advancing to next level — snapshot the current score as the new baseline
       levelStartScoreRef.current = scoreRef.current;
     }
     setScreen('countdown');
@@ -577,10 +594,17 @@ export function CupidGame({ onBack }: CupidGameProps) {
           // Player advances toward boss
           player.x += BOSS_ADVANCE_SPEED;
 
-          // Boss shoots single projectile
+          // Shoot frequency decreases as player gets closer
+          const totalDist = boss.x - BOSS_SIZE / 2 - 80;
+          const currentDist = boss.x - BOSS_SIZE / 2 - (player.x + player.width);
+          const closeness = 1 - Math.max(0, Math.min(1, currentDist / totalDist));
+          // At full distance: interval = BOSS_SHOOT_INTERVAL
+          // When very close: interval = BOSS_SHOOT_INTERVAL * 3 (shoots 3x less often)
+          const adjustedInterval = BOSS_SHOOT_INTERVAL * (1 + closeness * 2);
+
           boss.shootCooldown--;
           if (boss.shootCooldown <= 0) {
-            boss.shootCooldown = BOSS_SHOOT_INTERVAL;
+            boss.shootCooldown = adjustedInterval;
             projectilesRef.current.push({
               x: boss.x,
               y: boss.y + BOSS_SIZE / 2,
@@ -602,6 +626,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
                 bestScoreRef.current = scoreRef.current;
                 setBestScore(bestScoreRef.current);
               }
+              diedDuringBossRef.current = true;
               screenRef.current = 'gameOver';
               setScreen('gameOver');
               rafRef.current = requestAnimationFrame(gameLoop);
@@ -693,7 +718,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
       }
       screenRef.current = 'victory';
       setScreen('victory');
-      triggerCelebration();
+      triggerVictoryFireworks();
       return;
     }
     levelRef.current = next;
@@ -702,7 +727,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
   };
 
   const handleRetry = () => {
-    initLevel(levelRef.current, true); // reset score on retry
+    const bossRetry = diedDuringBossRef.current;
+    initLevel(levelRef.current, true, bossRetry);
   };
 
   const handleCanvasInteraction = () => {
