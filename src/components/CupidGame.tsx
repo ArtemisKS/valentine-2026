@@ -66,9 +66,9 @@ interface LevelConfig {
 }
 
 const LEVELS: LevelConfig[] = [
-  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 3, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
-  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
-  { pillarCount: 10, gapSize: 200, speed: 1.65, heartCount: 5, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
+  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 4, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
+  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 6, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
+  { pillarCount: 10, gapSize: 205, speed: 1.6, heartCount: 7, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -110,17 +110,23 @@ function generatePillars(levelCfg: LevelConfig, canvasHeight: number): Pillar[] 
 }
 
 function generateHearts(pillars: Pillar[], count: number): Heart[] {
-  const hearts: Heart[] = [];
-  const step = Math.max(1, Math.floor(pillars.length / count));
-  for (let i = 0; i < count && i * step < pillars.length; i++) {
-    const p = pillars[i * step]!;
-    hearts.push({
+  // Randomly select which pillars get hearts
+  const indices = pillars.map((_, i) => i);
+  // Shuffle (Fisher-Yates)
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j]!, indices[i]!];
+  }
+  const selected = indices.slice(0, Math.min(count, pillars.length)).sort((a, b) => a - b);
+
+  return selected.map(idx => {
+    const p = pillars[idx]!;
+    return {
       x: p.x + p.width / 2,
       y: p.gapY,
       collected: false,
-    });
-  }
-  return hearts;
+    };
+  });
 }
 
 // ─── Victory fireworks ───────────────────────────────────────────────
@@ -560,8 +566,17 @@ export function CupidGame({ onBack }: CupidGameProps) {
           }
         }
 
-        // Floor / ceiling death — only when fully off-screen
-        if (player.y + player.height > h + PLAYER_SIZE || player.y < -PLAYER_SIZE) {
+        // Ceiling clamp — hard boundary, not death
+        if (player.y < 0) {
+          player.y = 0;
+          player.vy = 0;
+        }
+
+        // Floor death — only when fully off-screen below
+        if (player.y + player.height > h + PLAYER_SIZE) {
+          if (bossRef.current) {
+            diedDuringBossRef.current = true;
+          }
           if (scoreRef.current > bestScoreRef.current) {
             bestScoreRef.current = scoreRef.current;
             setBestScore(bestScoreRef.current);
