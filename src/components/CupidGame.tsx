@@ -333,19 +333,19 @@ export function CupidGame({ onBack }: CupidGameProps) {
       ctx.textBaseline = 'middle';
       ctx.fillText('😈', boss.x, boss.y);
 
-      // Distance indicator — how close the player is to the boss
+      // Boss HP bar — full when far, depletes as player approaches
       const player = playerRef.current;
-      const totalDist = boss.x - BOSS_SIZE / 2 - 80; // max distance (starting x)
+      const totalDist = boss.x - BOSS_SIZE / 2 - 80;
       const currentDist = boss.x - BOSS_SIZE / 2 - (player.x + player.width);
-      const progress = Math.max(0, Math.min(1, 1 - currentDist / totalDist));
+      const remaining = Math.max(0, Math.min(1, currentDist / totalDist));
       const barW = 80;
       const barH = 8;
       const barX = boss.x - barW / 2;
       const barY = boss.y - BOSS_SIZE / 2 - 16;
       ctx.fillStyle = '#4b5563';
       ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = progress > 0.7 ? '#ef4444' : progress > 0.4 ? '#eab308' : '#22c55e';
-      ctx.fillRect(barX, barY, barW * progress, barH);
+      ctx.fillStyle = remaining > 0.5 ? '#22c55e' : remaining > 0.25 ? '#eab308' : '#ef4444';
+      ctx.fillRect(barX, barY, barW * remaining, barH);
       ctx.strokeStyle = isDark() ? '#e5e7eb' : '#1f2937';
       ctx.lineWidth = 1;
       ctx.strokeRect(barX, barY, barW, barH);
