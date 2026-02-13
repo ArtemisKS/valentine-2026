@@ -117,5 +117,7 @@ export const config = {
     scoreLabel: 'Score',
     /** Label for level display */
     levelLabel: 'Level',
+    /** Shown when the player sets a new best score */
+    newHighScore: 'NEW HIGH SCORE!',
   },
 };

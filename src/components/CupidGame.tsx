@@ -253,6 +253,9 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(sessionBestScore);
   const [countdown, setCountdown] = useState(3);
+  const newHighScoreRef = useRef(false);
+  const [highScoreAnimating, setHighScoreAnimating] = useState(false);
+  const highScoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canvasSizeRef = useRef({ w: 400, h: 500 });
 
@@ -422,6 +425,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     frameRef.current = 0;
     hasFlappedRef.current = false;
     diedDuringBossRef.current = false;
+    newHighScoreRef.current = false;
     screenRef.current = 'countdown';
     countdownRef.current = 3;
     countdownTimerRef.current = 0;
@@ -462,8 +466,32 @@ export function CupidGame({ onBack }: CupidGameProps) {
       bestScoreRef.current = scoreRef.current;
       sessionBestScore = scoreRef.current;
       setBestScore(scoreRef.current);
+      newHighScoreRef.current = true;
     }
   }, []);
+
+  /** Transition to a screen, showing the high-score animation first if earned. */
+  const transitionToScreen = useCallback((target: GameScreen, extraFn?: () => void) => {
+    updateBestScore();
+    const isNew = newHighScoreRef.current;
+
+    // Always freeze the game loop immediately
+    screenRef.current = target;
+
+    if (isNew) {
+      // Show high-score animation overlay first; delay the actual screen overlay
+      setHighScoreAnimating(true);
+      // Don't set React screen yet — the overlay is hidden by highScoreAnimating
+      setScreen(target);
+      highScoreTimerRef.current = setTimeout(() => {
+        setHighScoreAnimating(false);
+        extraFn?.();
+      }, 3200);
+    } else {
+      setScreen(target);
+      extraFn?.();
+    }
+  }, [updateBestScore]);
 
   // ─── Flap ───────────────────────────────────────────────────────
 
@@ -723,8 +751,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
         // Level complete (no boss level)
         if (!cfg.hasBoss && allPillarsPassed) {
           sfxLevelComplete();
-          screenRef.current = 'levelComplete';
-          setScreen('levelComplete');
+          transitionToScreen('levelComplete');
           rafRef.current = requestAnimationFrame(gameLoop);
           return;
         }
@@ -931,9 +958,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
       // Transition to victory
       if (t >= duration) {
         sfxVictory();
-        screenRef.current = 'victory';
-        setScreen('victory');
-        triggerVictoryFireworks();
+        transitionToScreen('victory', triggerVictoryFireworks);
       }
 
       rafRef.current = requestAnimationFrame(gameLoop);
@@ -948,7 +973,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     }
 
     rafRef.current = requestAnimationFrame(gameLoop);
-  }, [drawScene]);
+  }, [drawScene, transitionToScreen]);
 
   // ─── Start / stop loop (mount-only) ─────────────────────────────
 
@@ -966,6 +991,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      if (highScoreTimerRef.current !== null) clearTimeout(highScoreTimerRef.current);
       window.removeEventListener('resize', handleResize);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -976,10 +1002,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const handleNextLevel = () => {
     const next = levelRef.current + 1;
     if (next >= LEVELS.length) {
-      updateBestScore();
-      screenRef.current = 'victory';
-      setScreen('victory');
-      triggerVictoryFireworks();
+      transitionToScreen('victory', triggerVictoryFireworks);
       return;
     }
     levelRef.current = next;
@@ -1008,6 +1031,24 @@ export function CupidGame({ onBack }: CupidGameProps) {
       ref={containerRef}
       className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 dark:from-slate-950 dark:via-gray-900 dark:to-slate-950 px-4 py-4 transition-colors duration-500"
     >
+      {/* Keyframes for retro high-score animation */}
+      <style>{`
+        @keyframes highScorePop {
+          0%   { transform: scale(0.2) rotate(-5deg); opacity: 0; filter: blur(8px); }
+          8%   { transform: scale(1.8) rotate(2deg); opacity: 1; filter: blur(0); }
+          16%  { transform: scale(0.85) rotate(-1deg); opacity: 1; filter: blur(0); }
+          24%  { transform: scale(1.35) rotate(1deg); opacity: 1; filter: blur(0); }
+          32%  { transform: scale(0.95) rotate(0deg); opacity: 1; filter: blur(0); }
+          40%  { transform: scale(1.1) rotate(0deg); opacity: 1; filter: blur(0); }
+          48%  { transform: scale(1.0) rotate(0deg); opacity: 1; filter: blur(0); }
+          78%  { transform: scale(1.0) rotate(0deg); opacity: 1; filter: blur(0); }
+          100% { transform: scale(2.2) rotate(3deg); opacity: 0; filter: blur(10px); }
+        }
+        @keyframes highScoreStars {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50%      { transform: scale(1.3); opacity: 1; }
+        }
+      `}</style>
       {/* Header */}
       <div className="flex items-center justify-between w-full max-w-[700px] mb-3">
         <button
@@ -1037,7 +1078,37 @@ export function CupidGame({ onBack }: CupidGameProps) {
         />
 
         {/* Overlay screens rendered on top of canvas */}
-        {screen === 'levelComplete' && (
+
+        {/* Dedicated NEW HIGH SCORE animation — plays alone, before level/victory overlay */}
+        {highScoreAnimating && (
+          <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl ${overlayBg} backdrop-blur-sm`}>
+            <div
+              className="flex flex-col items-center"
+              style={{ animation: 'highScorePop 3.2s ease-out forwards' }}
+            >
+              <div className="text-4xl mb-3" style={{ animation: 'highScoreStars 1.6s ease-in-out infinite' }}>
+                ✨ 🌟 ✨
+              </div>
+              <p
+                className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-300"
+                style={{
+                  fontFamily: '"Press Start 2P", "Courier New", monospace',
+                  fontSize: 'clamp(1.6rem, 5vw, 2.4rem)',
+                  letterSpacing: '0.06em',
+                  lineHeight: 1.3,
+                  textAlign: 'center',
+                }}
+              >
+                {config.game.newHighScore}
+              </p>
+              <p className={`text-xl font-bold ${textPrimary} mt-3`}>
+                {score}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {screen === 'levelComplete' && !highScoreAnimating && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl ${overlayBg} backdrop-blur-sm`}>
             <div className="text-5xl mb-4">🎉</div>
             <h2 className={`text-2xl font-bold ${textPrimary} mb-2`}>
@@ -1089,7 +1160,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           </div>
         )}
 
-        {screen === 'victory' && (
+        {screen === 'victory' && !highScoreAnimating && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl ${overlayBg} backdrop-blur-sm`}>
             <div className="text-5xl mb-4">🏆</div>
             <h2 className={`text-2xl font-bold ${textPrimary} mb-2`}>
