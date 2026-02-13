@@ -1,4 +1,4 @@
-export type Step = 'intro' | 'question' | 'score' | 'letter' | 'valentine';
+export type Step = 'intro' | 'question' | 'score' | 'letter' | 'valentine' | 'game';
 
 export interface QuizState {
   step: Step;
@@ -20,4 +20,5 @@ export type QuizAction =
   | { type: 'MARK_EMAIL_SENT' }
   | { type: 'MARK_YES_CLICKED' }
   | { type: 'RESTORE_STATE'; state: QuizState }
+  | { type: 'SHOW_GAME' }
   | { type: 'NAVIGATE_TO'; step: Step; questionIndex: number };

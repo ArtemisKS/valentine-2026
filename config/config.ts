@@ -94,4 +94,28 @@ export const config = {
     /** Footer text template. {sender} and {recipient} are replaced automatically. */
     text: 'Made with love by {sender} for {recipient}',
   },
+
+  // ─── Cupid's Arrow Runner game ────────────────────────────────────
+  game: {
+    /** Label on the play button shown after Yes is clicked */
+    playButton: 'Play a Game',
+    /** Names for each of the 3 levels */
+    levelNames: ['Garden of Love', 'Sky of Hearts', "Cupid's Castle"],
+    /** Shown when the player loses */
+    gameOver: 'Game Over!',
+    /** Label on retry button */
+    tryAgain: 'Try Again',
+    /** Label on back button */
+    backToQuiz: 'Back to Valentine',
+    /** Heading after defeating the boss */
+    victory: 'You Won!',
+    /** Sub-message after victory */
+    victoryMessage: 'Cupid conquers all!',
+    /** Boss name displayed during level 3 */
+    bossName: 'Anti-Cupid',
+    /** Label for score display */
+    scoreLabel: 'Score',
+    /** Label for level display */
+    levelLabel: 'Level',
+  },
 };
