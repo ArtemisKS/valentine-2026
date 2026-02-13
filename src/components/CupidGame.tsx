@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
+import confetti from 'canvas-confetti';
 import { config } from '../../config/config';
-import { triggerCelebration } from '../utils/confetti';
 
 interface CupidGameProps {
   onBack: () => void;
@@ -66,9 +66,9 @@ interface LevelConfig {
 }
 
 const LEVELS: LevelConfig[] = [
-  { pillarCount: 6, gapSize: 250, speed: 1.2, heartCount: 3, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
-  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
-  { pillarCount: 10, gapSize: 200, speed: 1.7, heartCount: 5, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
+  { pillarCount: 6, gapSize: 240, speed: 1.3, heartCount: 3, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
+  { pillarCount: 8, gapSize: 210, speed: 1.5, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
+  { pillarCount: 10, gapSize: 190, speed: 1.7, heartCount: 5, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ const PLAYER_SIZE = 32;
 const HEART_SIZE = 24;
 const BOSS_SIZE = 48;
 const PROJECTILE_SIZE = 20;
-const BOSS_SHOOT_INTERVAL = 120; // frames (~2 seconds at 60fps)
+const BOSS_SHOOT_INTERVAL = 90; // frames (~1.5 seconds at 60fps)
 const BOSS_DURATION = 900; // frames (~15 seconds)
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -121,6 +121,56 @@ function generateHearts(pillars: Pillar[], count: number): Heart[] {
     });
   }
   return hearts;
+}
+
+// ─── Victory fireworks ───────────────────────────────────────────────
+
+function triggerVictoryFireworks(): void {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const duration = 4000;
+  const end = Date.now() + duration;
+  const colors = ['#ff1744', '#ff5252', '#ff6e40', '#ff9100', '#ffc400', '#e040fb', '#7c4dff'];
+
+  const frame = () => {
+    const timeLeft = end - Date.now();
+    if (timeLeft <= 0) return;
+
+    // Firework bursts from random positions
+    confetti({
+      particleCount: 40,
+      startVelocity: 30,
+      spread: 360,
+      origin: { x: Math.random(), y: Math.random() * 0.4 },
+      colors,
+      gravity: 0.7,
+      scalar: 1.3,
+      ticks: 80,
+      zIndex: 9999,
+    });
+
+    // Side cannons
+    confetti({
+      particleCount: 20,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.7 },
+      colors,
+      zIndex: 9999,
+    });
+    confetti({
+      particleCount: 20,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.7 },
+      colors,
+      zIndex: 9999,
+    });
+
+    setTimeout(frame, 250);
+  };
+
+  frame();
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -516,8 +566,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
         if (boss) {
           boss.timer++;
           boss.health--;
-          boss.phase += 0.03;
-          boss.y = h / 2 + Math.sin(boss.phase) * (h / 3);
+          boss.phase += 0.04;
+          boss.y = h / 2 + Math.sin(boss.phase) * (h * 0.38);
 
           boss.shootCooldown--;
           if (boss.shootCooldown <= 0) {
@@ -557,7 +607,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             }
             screenRef.current = 'victory';
             setScreen('victory');
-            triggerCelebration();
+            triggerVictoryFireworks();
             rafRef.current = requestAnimationFrame(gameLoop);
             return;
           }
