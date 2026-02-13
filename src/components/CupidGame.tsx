@@ -8,7 +8,7 @@ interface CupidGameProps {
 
 // ─── Game types ──────────────────────────────────────────────────────
 
-type GameScreen = 'countdown' | 'playing' | 'levelComplete' | 'gameOver' | 'victory';
+type GameScreen = 'countdown' | 'playing' | 'levelComplete' | 'gameOver' | 'bossExplode' | 'victory';
 
 interface Player {
   x: number;
@@ -189,6 +189,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const countdownTimerRef = useRef(0);
   const hasFlappedRef = useRef(false);
   const diedDuringBossRef = useRef(false);
+  const explodeTimerRef = useRef(0);
+  const explodePosRef = useRef({ x: 0, y: 0 });
 
   const playerRef = useRef<Player>({ x: 80, y: 200, vy: 0, width: PLAYER_SIZE, height: PLAYER_SIZE });
   const pillarsRef = useRef<Pillar[]>([]);
@@ -634,7 +636,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             }
           }
 
-          // Player reaches boss — victory!
+          // Player reaches boss — start explosion!
           const playerRight = player.x + player.width;
           const bossLeft = boss.x - BOSS_SIZE / 2;
           if (playerRight >= bossLeft) {
@@ -642,9 +644,10 @@ export function CupidGame({ onBack }: CupidGameProps) {
               bestScoreRef.current = scoreRef.current;
               setBestScore(bestScoreRef.current);
             }
-            screenRef.current = 'victory';
-            setScreen('victory');
-            triggerVictoryFireworks();
+            explodePosRef.current = { x: boss.x, y: boss.y };
+            explodeTimerRef.current = 0;
+            screenRef.current = 'bossExplode';
+            setScreen('bossExplode');
             rafRef.current = requestAnimationFrame(gameLoop);
             return;
           }
@@ -676,6 +679,94 @@ export function CupidGame({ onBack }: CupidGameProps) {
         ctx.fillText('Tap / Space to start!', w / 2, h - 40);
         ctx.globalAlpha = 1;
       }
+    }
+
+    // ── Boss explosion animation ──
+    if (currentScreen === 'bossExplode') {
+      explodeTimerRef.current++;
+      const t = explodeTimerRef.current;
+      const { x: bx, y: by } = explodePosRef.current;
+      const duration = 100; // ~1.7 seconds
+
+      drawBackground(ctx, w, h);
+
+      // Draw player standing victorious
+      const player = playerRef.current;
+      ctx.font = `${PLAYER_SIZE}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💘', player.x + player.width / 2, player.y + player.height / 2);
+
+      // Expanding shockwave rings
+      const ringCount = 3;
+      for (let i = 0; i < ringCount; i++) {
+        const delay = i * 12;
+        const ringT = t - delay;
+        if (ringT <= 0) continue;
+        const radius = ringT * 3;
+        const alpha = Math.max(0, 1 - ringT / 40);
+        ctx.beginPath();
+        ctx.arc(bx, by, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(239, 68, 68, ${alpha})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Boss shrinks, spins, and fades
+      if (t < 50) {
+        const scale = Math.max(0, 1 - t / 50);
+        const rotation = t * 0.15;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(rotation);
+        ctx.globalAlpha = scale;
+        ctx.font = `${BOSS_SIZE * scale}px serif`;
+        ctx.fillText('😈', 0, 0);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+
+      // Burst emojis flying outward
+      const bursts = ['💥', '✨', '💫', '⭐', '💥', '✨'];
+      for (let i = 0; i < bursts.length; i++) {
+        const angle = (i / bursts.length) * Math.PI * 2 + t * 0.02;
+        const dist = t * 2.5;
+        const alpha = Math.max(0, 1 - t / duration);
+        const ex = bx + Math.cos(angle) * dist;
+        const ey = by + Math.sin(angle) * dist;
+        ctx.globalAlpha = alpha;
+        ctx.font = '24px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(bursts[i]!, ex, ey);
+      }
+      ctx.globalAlpha = 1;
+
+      // Screen flash at start
+      if (t < 8) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * (1 - t / 8)})`;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // HUD
+      const dark = isDark();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.font = 'bold 16px system-ui, sans-serif';
+      ctx.fillStyle = dark ? '#fecdd3' : '#881337';
+      ctx.fillText(`${config.game.scoreLabel}: ${scoreRef.current}`, 12, 12);
+      ctx.textAlign = 'right';
+      ctx.fillText(`${config.game.levelLabel} ${levelRef.current + 1}`, w - 12, 12);
+
+      // Transition to victory
+      if (t >= duration) {
+        screenRef.current = 'victory';
+        setScreen('victory');
+        triggerVictoryFireworks();
+      }
+
+      rafRef.current = requestAnimationFrame(gameLoop);
+      return;
     }
 
     // ── Static screens (gameOver / levelComplete / victory) ──
