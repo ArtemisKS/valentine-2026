@@ -779,7 +779,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     rafRef.current = requestAnimationFrame(gameLoop);
   }, [drawScene]);
 
-  // ─── Start / stop loop ──────────────────────────────────────────
+  // ─── Start / stop loop (mount-only) ─────────────────────────────
 
   useEffect(() => {
     resizeCanvas();
@@ -796,7 +796,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       window.removeEventListener('resize', handleResize);
     };
-  }, [resizeCanvas, initLevel, gameLoop]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Actions ────────────────────────────────────────────────────
 
