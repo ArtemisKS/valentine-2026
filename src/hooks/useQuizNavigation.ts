@@ -20,6 +20,8 @@ function stateToHash(state: QuizState): string {
       return '#letter';
     case 'valentine':
       return '#valentine';
+    case 'game':
+      return '#game';
     default:
       return '#intro';
   }
@@ -61,6 +63,10 @@ function hashToState(hash: string): { step: Step; questionIndex: number } | null
     return { step: 'valentine', questionIndex: 0 };
   }
 
+  if (cleanHash === 'game') {
+    return { step: 'game', questionIndex: 0 };
+  }
+
   return null;
 }
 
@@ -97,7 +103,7 @@ function validateNavigation(
     return answers[targetIndex - 1] !== undefined;
   }
 
-  if (targetStep === 'score' || targetStep === 'letter' || targetStep === 'valentine') {
+  if (targetStep === 'score' || targetStep === 'letter' || targetStep === 'valentine' || targetStep === 'game') {
     return answers.length === 7 && answers.every(answer => answer !== undefined);
   }
 
