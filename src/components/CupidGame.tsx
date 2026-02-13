@@ -64,6 +64,8 @@ interface LevelConfig {
   gapSize: number;
   speed: number;
   heartCount: number;
+  /** Points awarded per heart collected */
+  heartPoints: number;
   movingPillars: boolean;
   /** Sine wave amplitude for moving pillars (px per frame) */
   pillarWaveAmplitude: number;
@@ -71,9 +73,9 @@ interface LevelConfig {
 }
 
 const LEVELS: LevelConfig[] = [
-  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 4, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
-  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 6, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
-  { pillarCount: 10, gapSize: 205, speed: 1.6, heartCount: 7, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
+  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 4, heartPoints: 2, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
+  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 6, heartPoints: 3, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
+  { pillarCount: 10, gapSize: 205, speed: 1.6, heartCount: 10, heartPoints: 4, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -89,6 +91,9 @@ const PROJECTILE_SIZE = 20;
 const BOSS_SHOOT_INTERVAL = 90; // frames (~1.5 seconds at 60fps)
 const BOSS_ADVANCE_SPEED = 0.4; // px per frame the player advances toward boss
 const FRAME_MS = 1000 / 110; // physics step duration — targets 110 ticks/sec on all devices
+
+// Module-level best score — survives component unmount/remount (same browser session)
+let sessionBestScore = 0;
 
 // ─── Emoji sprite cache (pre-renders for consistent mobile display) ─
 
@@ -224,7 +229,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const screenRef = useRef<GameScreen>('countdown');
   const levelRef = useRef(0);
   const scoreRef = useRef(0);
-  const bestScoreRef = useRef(0);
+  const bestScoreRef = useRef(sessionBestScore);
   const levelStartScoreRef = useRef(0);
   const countdownRef = useRef(3);
   const countdownTimerRef = useRef(0);
@@ -246,7 +251,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const [screen, setScreen] = useState<GameScreen>('countdown');
   const [level, setLevel] = useState(0);
   const [score, setScore] = useState(0);
-  const [bestScore, setBestScore] = useState(0);
+  const [bestScore, setBestScore] = useState(sessionBestScore);
   const [countdown, setCountdown] = useState(3);
 
   const canvasSizeRef = useRef({ w: 400, h: 500 });
@@ -450,6 +455,16 @@ export function CupidGame({ onBack }: CupidGameProps) {
     setCountdown(3);
   }, []);
 
+  // ─── Best score updater ────────────────────────────────────────
+
+  const updateBestScore = useCallback(() => {
+    if (scoreRef.current > bestScoreRef.current) {
+      bestScoreRef.current = scoreRef.current;
+      sessionBestScore = scoreRef.current;
+      setBestScore(scoreRef.current);
+    }
+  }, []);
+
   // ─── Flap ───────────────────────────────────────────────────────
 
   const flap = useCallback(() => {
@@ -572,6 +587,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             p.passed = true;
             scoreRef.current += 1;
             setScore(scoreRef.current);
+            updateBestScore();
             sfxPillarPass();
           }
         }
@@ -583,8 +599,9 @@ export function CupidGame({ onBack }: CupidGameProps) {
           const dy = player.y + player.height / 2 - heart.y;
           if (Math.sqrt(dx * dx + dy * dy) < (player.width / 2 + HEART_SIZE / 2)) {
             heart.collected = true;
-            scoreRef.current += 3;
+            scoreRef.current += cfg.heartPoints;
             setScore(scoreRef.current);
+            updateBestScore();
             sfxCollectHeart();
           }
         }
@@ -599,10 +616,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             const bottomY = p.gapY + p.gapSize / 2;
             if (player.y < topH || player.y + player.height > bottomY) {
               sfxDie();
-              if (scoreRef.current > bestScoreRef.current) {
-                bestScoreRef.current = scoreRef.current;
-                setBestScore(bestScoreRef.current);
-              }
+              updateBestScore();
               screenRef.current = 'gameOver';
               setScreen('gameOver');
               rafRef.current = requestAnimationFrame(gameLoop);
@@ -623,10 +637,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           if (bossRef.current) {
             diedDuringBossRef.current = true;
           }
-          if (scoreRef.current > bestScoreRef.current) {
-            bestScoreRef.current = scoreRef.current;
-            setBestScore(bestScoreRef.current);
-          }
+          updateBestScore();
           screenRef.current = 'gameOver';
           setScreen('gameOver');
           rafRef.current = requestAnimationFrame(gameLoop);
@@ -685,10 +696,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             const dy = player.y + player.height / 2 - (proj.y + PROJECTILE_SIZE / 2);
             if (Math.sqrt(dx * dx + dy * dy) < (player.width / 2 + PROJECTILE_SIZE / 2) * 0.8) {
               sfxDie();
-              if (scoreRef.current > bestScoreRef.current) {
-                bestScoreRef.current = scoreRef.current;
-                setBestScore(bestScoreRef.current);
-              }
+              updateBestScore();
               diedDuringBossRef.current = true;
               screenRef.current = 'gameOver';
               setScreen('gameOver');
@@ -701,10 +709,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           const playerRight = player.x + player.width;
           const bossLeft = boss.x - BOSS_SIZE / 2;
           if (playerRight >= bossLeft) {
-            if (scoreRef.current > bestScoreRef.current) {
-              bestScoreRef.current = scoreRef.current;
-              setBestScore(bestScoreRef.current);
-            }
+            updateBestScore();
             explodePosRef.current = { x: boss.x, y: boss.y };
             explodeTimerRef.current = 0;
             sfxBossFreeze();
@@ -971,10 +976,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const handleNextLevel = () => {
     const next = levelRef.current + 1;
     if (next >= LEVELS.length) {
-      if (scoreRef.current > bestScoreRef.current) {
-        bestScoreRef.current = scoreRef.current;
-        setBestScore(bestScoreRef.current);
-      }
+      updateBestScore();
       screenRef.current = 'victory';
       setScreen('victory');
       triggerVictoryFireworks();
