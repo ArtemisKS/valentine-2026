@@ -60,13 +60,15 @@ interface LevelConfig {
   speed: number;
   heartCount: number;
   movingPillars: boolean;
+  /** Sine wave amplitude for moving pillars (px per frame) */
+  pillarWaveAmplitude: number;
   hasBoss: boolean;
 }
 
 const LEVELS: LevelConfig[] = [
-  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 3, movingPillars: false, hasBoss: false },
-  { pillarCount: 8, gapSize: 200, speed: 1.6, heartCount: 4, movingPillars: true, hasBoss: false },
-  { pillarCount: 10, gapSize: 170, speed: 2.0, heartCount: 5, movingPillars: false, hasBoss: true },
+  { pillarCount: 6, gapSize: 250, speed: 1.2, heartCount: 3, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
+  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
+  { pillarCount: 10, gapSize: 200, speed: 1.7, heartCount: 5, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -430,7 +432,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
         for (const p of pillars) {
           p.x -= cfg.speed;
           if (cfg.movingPillars) {
-            p.gapY += Math.sin(frameRef.current * 0.03 + p.phase) * 0.8;
+            p.gapY += Math.sin(frameRef.current * 0.03 + p.phase) * cfg.pillarWaveAmplitude;
           }
         }
 
