@@ -66,8 +66,8 @@ interface LevelConfig {
 }
 
 const LEVELS: LevelConfig[] = [
-  { pillarCount: 6, gapSize: 240, speed: 1.3, heartCount: 3, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
-  { pillarCount: 8, gapSize: 210, speed: 1.5, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
+  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 3, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
+  { pillarCount: 8, gapSize: 210, speed: 1.6, heartCount: 4, movingPillars: true, pillarWaveAmplitude: 0.5, hasBoss: false },
   { pillarCount: 10, gapSize: 190, speed: 1.7, heartCount: 5, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
 ];
 
@@ -82,7 +82,7 @@ const HEART_SIZE = 24;
 const BOSS_SIZE = 48;
 const PROJECTILE_SIZE = 20;
 const BOSS_SHOOT_INTERVAL = 90; // frames (~1.5 seconds at 60fps)
-const BOSS_DURATION = 900; // frames (~15 seconds)
+const BOSS_ADVANCE_SPEED = 0.4; // px per frame the player advances toward boss
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -332,16 +332,19 @@ export function CupidGame({ onBack }: CupidGameProps) {
       ctx.textBaseline = 'middle';
       ctx.fillText('😈', boss.x, boss.y);
 
-      // Health bar
+      // Distance indicator — how close the player is to the boss
+      const player = playerRef.current;
+      const totalDist = boss.x - BOSS_SIZE / 2 - 80; // max distance (starting x)
+      const currentDist = boss.x - BOSS_SIZE / 2 - (player.x + player.width);
+      const progress = Math.max(0, Math.min(1, 1 - currentDist / totalDist));
       const barW = 80;
       const barH = 8;
       const barX = boss.x - barW / 2;
       const barY = boss.y - BOSS_SIZE / 2 - 16;
       ctx.fillStyle = '#4b5563';
       ctx.fillRect(barX, barY, barW, barH);
-      const pct = Math.max(0, boss.health / boss.maxHealth);
-      ctx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#eab308' : '#ef4444';
-      ctx.fillRect(barX, barY, barW * pct, barH);
+      ctx.fillStyle = progress > 0.7 ? '#ef4444' : progress > 0.4 ? '#eab308' : '#22c55e';
+      ctx.fillRect(barX, barY, barW * progress, barH);
       ctx.strokeStyle = isDark() ? '#e5e7eb' : '#1f2937';
       ctx.lineWidth = 1;
       ctx.strokeRect(barX, barY, barW, barH);
@@ -386,10 +389,13 @@ export function CupidGame({ onBack }: CupidGameProps) {
     countdownRef.current = 3;
     countdownTimerRef.current = 0;
     if (resetScore) {
-      scoreRef.current = 0;
-      setScore(0);
+      // Restore to the score earned up to this level (not 0)
+      scoreRef.current = levelStartScoreRef.current;
+      setScore(scoreRef.current);
+    } else {
+      // Advancing to next level — snapshot the current score as the new baseline
+      levelStartScoreRef.current = scoreRef.current;
     }
-    levelStartScoreRef.current = scoreRef.current;
     setScreen('countdown');
     setCountdown(3);
   }, []);
@@ -555,8 +561,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
           bossRef.current = {
             x: w - 80,
             y: h / 2,
-            health: BOSS_DURATION,
-            maxHealth: BOSS_DURATION,
+            health: 1,
+            maxHealth: 1,
             phase: 0,
             timer: 0,
             shootCooldown: BOSS_SHOOT_INTERVAL,
@@ -565,10 +571,13 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
         if (boss) {
           boss.timer++;
-          boss.health--;
           boss.phase += 0.04;
-          boss.y = h / 2 + Math.sin(boss.phase) * (h * 0.38);
+          boss.y = h / 2 + Math.sin(boss.phase) * (h * 0.35);
 
+          // Player advances toward boss
+          player.x += BOSS_ADVANCE_SPEED;
+
+          // Boss shoots single projectile
           boss.shootCooldown--;
           if (boss.shootCooldown <= 0) {
             boss.shootCooldown = BOSS_SHOOT_INTERVAL;
@@ -600,7 +609,10 @@ export function CupidGame({ onBack }: CupidGameProps) {
             }
           }
 
-          if (boss.health <= 0) {
+          // Player reaches boss — victory!
+          const playerRight = player.x + player.width;
+          const bossLeft = boss.x - BOSS_SIZE / 2;
+          if (playerRight >= bossLeft) {
             if (scoreRef.current > bestScoreRef.current) {
               bestScoreRef.current = scoreRef.current;
               setBestScore(bestScoreRef.current);
@@ -655,7 +667,10 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
   useEffect(() => {
     resizeCanvas();
-    initLevel(0, true);
+    levelStartScoreRef.current = 0;
+    scoreRef.current = 0;
+    setScore(0);
+    initLevel(0, false);
     rafRef.current = requestAnimationFrame(gameLoop);
 
     const handleResize = () => resizeCanvas();
