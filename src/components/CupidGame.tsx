@@ -64,15 +64,15 @@ interface LevelConfig {
 }
 
 const LEVELS: LevelConfig[] = [
-  { pillarCount: 8, gapSize: 200, speed: 1.5, heartCount: 3, movingPillars: false, hasBoss: false },
-  { pillarCount: 10, gapSize: 170, speed: 2.2, heartCount: 4, movingPillars: true, hasBoss: false },
-  { pillarCount: 12, gapSize: 150, speed: 2.8, heartCount: 5, movingPillars: false, hasBoss: true },
+  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 3, movingPillars: false, hasBoss: false },
+  { pillarCount: 8, gapSize: 200, speed: 1.6, heartCount: 4, movingPillars: true, hasBoss: false },
+  { pillarCount: 10, gapSize: 170, speed: 2.0, heartCount: 5, movingPillars: false, hasBoss: true },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────
 
-const GRAVITY = 0.25;
-const FLAP_STRENGTH = -5.5;
+const GRAVITY = 0.22;
+const FLAP_STRENGTH = -5;
 const PILLAR_WIDTH = 52;
 const PILLAR_SPACING = 250;
 const PLAYER_SIZE = 32;
