@@ -483,11 +483,13 @@ export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePr
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-rose-900 dark:text-rose-100 mb-4">
                 {config.valentine.question}
               </h1>
+            {!hideNoButton && (
               <div ref={subtitleRef} className="bg-white/20 dark:bg-white/[0.06] backdrop-blur-md rounded-2xl p-4 border border-white/40 dark:border-white/[0.08] shadow-inner inline-block">
                 <p className="text-lg sm:text-xl text-rose-900 dark:text-rose-100 font-medium">
                   {config.valentine.subtitle} 💕
                 </p>
               </div>
+            )}
             </div>
 
             <div
@@ -543,9 +545,11 @@ export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePr
               </div>
             )}
 
-            <p ref={hintRef} className="mt-12 sm:mt-16 text-xs text-rose-700 dark:text-rose-300 font-medium bg-white/20 dark:bg-white/[0.06] backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40 dark:border-white/[0.08]">
-              {config.valentine.hintText} <span className="not-italic">😏</span>
-            </p>
+            {!hideNoButton && (
+              <p ref={hintRef} className="mt-12 sm:mt-16 text-xs text-rose-700 dark:text-rose-300 font-medium bg-white/20 dark:bg-white/[0.06] backdrop-blur-sm rounded-full px-6 py-2 inline-block border border-white/40 dark:border-white/[0.08]">
+                {config.valentine.hintText} <span className="not-italic">😏</span>
+              </p>
+            )}
 
             {hideNoButton && onPlayGame && (
               <div className="mt-6 animate-[fadeIn_0.5s_ease-out_1s_both]">
