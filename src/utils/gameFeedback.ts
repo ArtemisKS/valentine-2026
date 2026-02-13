@@ -93,10 +93,22 @@ function playNoise(duration: number, volume: number = 0.08): void {
   }
 }
 
+// ─── Mobile detection (cached) ───────────────────────────────────────
+
+let _isMobile: boolean | null = null;
+
+function isMobile(): boolean {
+  if (_isMobile === null) {
+    _isMobile = window.matchMedia('(pointer: coarse)').matches;
+  }
+  return _isMobile;
+}
+
 // ─── Game sound effects ─────────────────────────────────────────────
 
-/** Quick ascending blip when the player flaps. */
+/** Quick ascending blip when the player flaps. Muted on mobile. */
 export function sfxFlap(): void {
+  if (isMobile()) return;
   playTone(420, 0.07, 'square', 0.06, 650);
 }
 

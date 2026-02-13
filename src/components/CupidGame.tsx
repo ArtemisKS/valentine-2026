@@ -78,7 +78,7 @@ const LEVELS: LevelConfig[] = [
 
 // ─── Constants ───────────────────────────────────────────────────────
 
-const GRAVITY = 0.22;
+const GRAVITY = 0.20;
 const FLAP_STRENGTH = -5;
 const PILLAR_WIDTH = 52;
 const PILLAR_SPACING = 250;
@@ -88,6 +88,36 @@ const BOSS_SIZE = 48;
 const PROJECTILE_SIZE = 20;
 const BOSS_SHOOT_INTERVAL = 90; // frames (~1.5 seconds at 60fps)
 const BOSS_ADVANCE_SPEED = 0.4; // px per frame the player advances toward boss
+const FRAME_MS = 1000 / 110; // physics step duration — targets 110 ticks/sec on all devices
+
+// ─── Emoji sprite cache (pre-renders for consistent mobile display) ─
+
+const emojiCache = new Map<string, HTMLCanvasElement>();
+
+function getEmojiSprite(emoji: string, size: number): HTMLCanvasElement {
+  const key = `${emoji}_${size}`;
+  const cached = emojiCache.get(key);
+  if (cached) return cached;
+
+  const scale = 2; // render at 2x for crisp display
+  const canvas = document.createElement('canvas');
+  canvas.width = size * scale;
+  canvas.height = size * scale;
+  const ctx = canvas.getContext('2d')!;
+  ctx.font = `${size * scale * 0.75}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, canvas.width / 2, canvas.height / 2);
+
+  emojiCache.set(key, canvas);
+  return canvas;
+}
+
+/** Draw a cached emoji sprite centered at (cx, cy). */
+function drawEmoji(ctx: CanvasRenderingContext2D, emoji: string, size: number, cx: number, cy: number): void {
+  const sprite = getEmojiSprite(emoji, size);
+  ctx.drawImage(sprite, cx - size / 2, cy - size / 2, size, size);
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -210,6 +240,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const projectilesRef = useRef<Projectile[]>([]);
   const frameRef = useRef(0);
   const rafRef = useRef<number | null>(null);
+  const lastTimeRef = useRef(0);
 
   // React state for overlay screens only
   const [screen, setScreen] = useState<GameScreen>('countdown');
@@ -251,12 +282,11 @@ export function CupidGame({ onBack }: CupidGameProps) {
     ctx.fillRect(0, 0, w, h);
 
     // Floating emoji clouds
-    ctx.font = '20px serif';
     ctx.globalAlpha = 0.15;
     const t = frameRef.current * 0.01;
-    ctx.fillText('☁️', (w * 0.1 + Math.sin(t) * 20) % w, 60);
-    ctx.fillText('✨', (w * 0.5 + Math.sin(t + 1) * 30) % w, 40);
-    ctx.fillText('☁️', (w * 0.8 + Math.sin(t + 2) * 25) % w, 80);
+    drawEmoji(ctx, '☁️', 20, (w * 0.1 + Math.sin(t) * 20) % w, 60);
+    drawEmoji(ctx, '✨', 20, (w * 0.5 + Math.sin(t + 1) * 30) % w, 40);
+    drawEmoji(ctx, '☁️', 20, (w * 0.8 + Math.sin(t + 2) * 25) % w, 80);
     ctx.globalAlpha = 1;
   }, []);
 
@@ -325,26 +355,19 @@ export function CupidGame({ onBack }: CupidGameProps) {
     }
 
     // Hearts
-    ctx.font = `${HEART_SIZE}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     for (const heart of hearts) {
       if (heart.collected || heart.x < -HEART_SIZE || heart.x > w + HEART_SIZE) continue;
-      ctx.fillText('💖', heart.x, heart.y);
+      drawEmoji(ctx, '💖', HEART_SIZE, heart.x, heart.y);
     }
 
     // Projectiles
-    ctx.font = `${PROJECTILE_SIZE}px serif`;
     for (const proj of projectilesRef.current) {
-      ctx.fillText('💔', proj.x, proj.y);
+      drawEmoji(ctx, '💔', PROJECTILE_SIZE, proj.x, proj.y);
     }
 
     // Boss
     if (boss) {
-      ctx.font = `${BOSS_SIZE}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('😈', boss.x, boss.y);
+      drawEmoji(ctx, '😈', BOSS_SIZE, boss.x, boss.y);
 
       // Boss HP bar — full when far, depletes as player approaches
       const player = playerRef.current;
@@ -371,10 +394,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     }
 
     // Player (cupid emoji)
-    ctx.font = `${PLAYER_SIZE}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('💘', player.x + player.width / 2, player.y + player.height / 2);
+    drawEmoji(ctx, '💘', PLAYER_SIZE, player.x + player.width / 2, player.y + player.height / 2);
 
     // HUD
     const dark = isDark();
@@ -461,6 +481,15 @@ export function CupidGame({ onBack }: CupidGameProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // ── Delta-time scaling ──
+    // Physics runs once per rendered frame, scaled by dt so speed is
+    // identical on every device. FRAME_MS = 1000/110 (110fps target).
+    // On 60fps: dt≈0.75. On slow mobile (30fps): dt≈1.5.
+    const now = performance.now();
+    const elapsed = Math.min(now - lastTimeRef.current, 100); // cap to avoid spiral
+    lastTimeRef.current = now;
+    const dt = Math.min(elapsed / FRAME_MS, 6); // float ratio, no rounding
+
     const { w, h } = canvasSizeRef.current;
     const currentScreen = screenRef.current;
     const lvl = levelRef.current;
@@ -489,7 +518,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
       ctx.fillStyle = dark ? '#fecdd3' : '#e11d48';
       ctx.fillText(String(countdownRef.current), w / 2, h / 2 + 20);
 
-      countdownTimerRef.current++;
+      // Advance countdown timer by dt
+      countdownTimerRef.current += dt;
       if (countdownTimerRef.current >= 60) {
         countdownTimerRef.current = 0;
         countdownRef.current--;
@@ -509,27 +539,31 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     // ── Playing ──
     if (currentScreen === 'playing') {
-      frameRef.current++;
       const player = playerRef.current;
 
+      // Run physics once per frame, scaled by dt for smooth rendering
+      frameRef.current += dt;
+
       if (hasFlappedRef.current) {
-        // Normal gravity + scrolling after first tap
-        player.vy += GRAVITY;
-        player.y += player.vy;
+        // Gravity with exact semi-implicit Euler integration over dt steps:
+        // Δy = v₀·dt + G·dt·(dt+1)/2 matches running dt discrete steps exactly.
+        const vy_old = player.vy;
+        player.vy += GRAVITY * dt;
+        player.y += vy_old * dt + GRAVITY * dt * (dt + 1) / 2;
 
         // Move pillars
         const pillars = pillarsRef.current;
         for (const p of pillars) {
-          p.x -= cfg.speed;
+          p.x -= cfg.speed * dt;
           if (cfg.movingPillars) {
-            p.gapY += Math.sin(frameRef.current * 0.03 + p.phase) * cfg.pillarWaveAmplitude;
+            p.gapY += Math.sin(frameRef.current * 0.03 + p.phase) * cfg.pillarWaveAmplitude * dt;
           }
         }
 
         // Move hearts with pillars
         const hearts = heartsRef.current;
         for (const heart of hearts) {
-          heart.x -= cfg.speed;
+          heart.x -= cfg.speed * dt;
         }
 
         // Check pillar passing
@@ -565,7 +599,6 @@ export function CupidGame({ onBack }: CupidGameProps) {
             const bottomY = p.gapY + p.gapSize / 2;
             if (player.y < topH || player.y + player.height > bottomY) {
               sfxDie();
-              // Update best score
               if (scoreRef.current > bestScoreRef.current) {
                 bestScoreRef.current = scoreRef.current;
                 setBestScore(bestScoreRef.current);
@@ -617,22 +650,20 @@ export function CupidGame({ onBack }: CupidGameProps) {
         }
 
         if (boss) {
-          boss.timer++;
-          boss.phase += 0.04;
+          boss.timer += dt;
+          boss.phase += 0.04 * dt;
           boss.y = h / 2 + Math.sin(boss.phase) * (h * 0.35);
 
           // Player advances toward boss
-          player.x += BOSS_ADVANCE_SPEED;
+          player.x += BOSS_ADVANCE_SPEED * dt;
 
           // Shoot frequency decreases as player gets closer
           const totalDist = boss.x - BOSS_SIZE / 2 - 80;
           const currentDist = boss.x - BOSS_SIZE / 2 - (player.x + player.width);
           const closeness = 1 - Math.max(0, Math.min(1, currentDist / totalDist));
-          // At full distance: interval = BOSS_SHOOT_INTERVAL
-          // When very close: interval = BOSS_SHOOT_INTERVAL * 3 (shoots 3x less often)
           const adjustedInterval = BOSS_SHOOT_INTERVAL * (1 + closeness * 2);
 
-          boss.shootCooldown--;
+          boss.shootCooldown -= dt;
           if (boss.shootCooldown <= 0) {
             boss.shootCooldown = adjustedInterval;
             sfxBossShoot();
@@ -645,7 +676,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
           const projectiles = projectilesRef.current;
           for (const proj of projectiles) {
-            proj.x += proj.vx;
+            proj.x += proj.vx * dt;
           }
           projectilesRef.current = projectiles.filter(p => p.x > -PROJECTILE_SIZE);
 
@@ -697,7 +728,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
         player.y += Math.sin(frameRef.current * 0.05) * 0.3;
       }
 
-      // Draw the scene
+      // Draw the scene (once per render frame)
       drawScene(ctx, w, h);
 
       // "Tap to start" hint before first flap
@@ -715,7 +746,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     // ── Boss freeze (pre-explosion) — still pause then trembling ──
     if (currentScreen === 'bossFreeze') {
-      explodeTimerRef.current++;
+      explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
       const stillDuration = 120;   // ~2s of true freeze (everything stops)
       const trembleDuration = 180; // ~3s of boss trembling
@@ -736,18 +767,15 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
       // Draw player
       const player = playerRef.current;
-      ctx.font = `${PLAYER_SIZE}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('💘', player.x + player.width / 2, player.y + player.height / 2);
+      drawEmoji(ctx, '💘', PLAYER_SIZE, player.x + player.width / 2, player.y + player.height / 2);
 
       const { x: bx, y: by } = explodePosRef.current;
 
       if (t <= stillDuration) {
         // ── Still phase: boss frozen in place, slight pulse ──
         const pulse = 1 + Math.sin(t * 0.15) * 0.03;
-        ctx.font = `${BOSS_SIZE * pulse}px serif`;
-        ctx.fillText('😈', bx, by);
+        const s = BOSS_SIZE * pulse;
+        drawEmoji(ctx, '😈', s, bx, by);
       } else {
         // ── Tremble phase: boss shakes with increasing intensity ──
         const trembleT = t - stillDuration;
@@ -759,8 +787,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
         // Boss flashes with increasing frequency
         ctx.globalAlpha = 0.6 + Math.sin(trembleT * (0.3 + progress * 0.8)) * 0.4;
         const sizeFlicker = 1 + Math.sin(trembleT * 0.4) * progress * 0.15;
-        ctx.font = `${BOSS_SIZE * sizeFlicker}px serif`;
-        ctx.fillText('😈', shakeX, shakeY);
+        drawEmoji(ctx, '😈', BOSS_SIZE * sizeFlicker, shakeX, shakeY);
         ctx.globalAlpha = 1;
 
         // Pulsing warning glow — grows during tremble
@@ -804,7 +831,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     // ── Boss explosion animation ──
     if (currentScreen === 'bossExplode') {
-      explodeTimerRef.current++;
+      explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
       const { x: bx, y: by } = explodePosRef.current;
       const duration = 180; // ~3 seconds
@@ -813,10 +840,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
       // Draw player standing victorious
       const player = playerRef.current;
-      ctx.font = `${PLAYER_SIZE}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('💘', player.x + player.width / 2, player.y + player.height / 2);
+      drawEmoji(ctx, '💘', PLAYER_SIZE, player.x + player.width / 2, player.y + player.height / 2);
 
       // Expanding shockwave rings — more rings, bigger, thicker
       const ringCount = 5;
@@ -844,8 +868,9 @@ export function CupidGame({ onBack }: CupidGameProps) {
         ctx.translate(bx, by);
         ctx.rotate(rotation);
         ctx.globalAlpha = scale;
-        ctx.font = `${BOSS_SIZE * (scale + 0.2)}px serif`;
-        ctx.fillText('😈', 0, 0);
+        const s = BOSS_SIZE * (scale + 0.2);
+        const sprite = getEmojiSprite('😈', BOSS_SIZE);
+        ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
         ctx.restore();
         ctx.globalAlpha = 1;
       }
@@ -859,10 +884,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
         const ex = bx + Math.cos(angle) * dist;
         const ey = by + Math.sin(angle) * dist;
         ctx.globalAlpha = alpha;
-        ctx.font = '28px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(bursts[i]!, ex, ey);
+        drawEmoji(ctx, bursts[i]!, 28, ex, ey);
       }
 
       // Second wave — delayed inner burst
@@ -875,8 +897,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           const ex = bx + Math.cos(angle) * dist;
           const ey = by + Math.sin(angle) * dist;
           ctx.globalAlpha = alpha;
-          ctx.font = '22px serif';
-          ctx.fillText(wave2[i]!, ex, ey);
+          drawEmoji(ctx, wave2[i]!, 22, ex, ey);
         }
       }
       ctx.globalAlpha = 1;
@@ -928,6 +949,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
   useEffect(() => {
     resizeCanvas();
+    lastTimeRef.current = performance.now();
     levelStartScoreRef.current = 0;
     scoreRef.current = 0;
     setScore(0);
