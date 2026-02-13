@@ -60,7 +60,6 @@ function playTone(
   volume: number = 0.15,
   freqEnd?: number,
 ): void {
-  if (isReducedMotion()) return;
   try {
     const ctx = getAudioCtx();
     const osc = ctx.createOscillator();
@@ -86,7 +85,6 @@ function playTone(
 
 /** Play a short noise burst (for impact/explosion textures). */
 function playNoise(duration: number, volume: number = 0.08): void {
-  if (isReducedMotion()) return;
   try {
     const ctx = getAudioCtx();
     const bufferSize = ctx.sampleRate * duration;
@@ -117,6 +115,30 @@ function isMobile(): boolean {
     _isMobile = window.matchMedia('(pointer: coarse)').matches;
   }
   return _isMobile;
+}
+
+// ─── iOS audio unlock ───────────────────────────────────────────────
+// iOS Safari requires AudioContext to be created AND resumed during a
+// user gesture. Register a one-time document-level listener that unlocks
+// audio on the very first touch/click, before any game interaction.
+
+let _audioUnlockRegistered = false;
+
+/** Call once on mount to register the iOS audio unlock listener. */
+export function registerAudioUnlock(): void {
+  if (_audioUnlockRegistered) return;
+  _audioUnlockRegistered = true;
+
+  const unlock = () => {
+    getAudioCtx(); // creates context + plays silent buffer
+    document.removeEventListener('touchstart', unlock, true);
+    document.removeEventListener('touchend', unlock, true);
+    document.removeEventListener('click', unlock, true);
+  };
+  // Use capture phase to fire before any preventDefault
+  document.addEventListener('touchstart', unlock, true);
+  document.addEventListener('touchend', unlock, true);
+  document.addEventListener('click', unlock, true);
 }
 
 // ─── Game sound effects ─────────────────────────────────────────────

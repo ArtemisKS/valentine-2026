@@ -4,7 +4,7 @@ import { config } from '../../config/config';
 import {
   sfxFlap, sfxCollectHeart, sfxPillarPass, sfxDie,
   sfxBossShoot, sfxBossExplode, sfxBossFreeze, sfxLevelComplete, sfxVictory,
-  sfxCountdownTick, sfxCountdownGo,
+  sfxCountdownTick, sfxCountdownGo, registerAudioUnlock,
 } from '../utils/gameFeedback';
 
 interface CupidGameProps {
@@ -93,13 +93,17 @@ const BOSS_ADVANCE_SPEED = 0.4; // px per frame the player advances toward boss
 const FRAME_MS = 1000 / 110; // physics step duration — targets 110 ticks/sec on all devices
 
 // ─── Mobile-adaptive physics ──────────────────────────────────────────
-// On mobile, gravity and flap feel too aggressive because the handheld
-// screen makes motion feel exaggerated. Softer constants give the smooth,
-// floaty Flappy Bird feel the user expects on touch devices.
+// On mobile, asymmetric gravity creates the classic "flappy" feel:
+// - Rising phase uses stronger gravity → each tap produces a sharp,
+//   pointed arc that decelerates quickly (not a smooth glide up).
+// - Falling phase uses normal gravity → gentle, controlled descent.
+// Rapid tapping creates a visible sawtooth/staircase pattern instead of
+// smooth upward flight. Desktop uses symmetric gravity (1.0x).
 const _isMobileGame = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 const GRAVITY_EFF = _isMobileGame ? 0.18 : GRAVITY;
-const FLAP_EFF = _isMobileGame ? -2.7 : FLAP_STRENGTH;
+const FLAP_EFF = _isMobileGame ? -4.7 : FLAP_STRENGTH;
 const DT_CAP = _isMobileGame ? 3 : 6;
+const RISE_GRAVITY_MULT = _isMobileGame ? 2.5 : 1.0;
 
 // Module-level best score — survives component unmount/remount (same browser session)
 let sessionBestScore = 0;
@@ -597,11 +601,12 @@ export function CupidGame({ onBack }: CupidGameProps) {
       frameRef.current += dt;
 
       if (hasFlappedRef.current) {
-        // Gravity with exact semi-implicit Euler integration over dt steps:
-        // Δy = v₀·dt + G·dt·(dt+1)/2 matches running dt discrete steps exactly.
+        // Asymmetric gravity: stronger when rising (vy < 0) for "flappy" arcs,
+        // normal when falling for a gentle descent.
+        const g = GRAVITY_EFF * (player.vy < 0 ? RISE_GRAVITY_MULT : 1.0);
         const vy_old = player.vy;
-        player.vy += GRAVITY_EFF * dt;
-        player.y += vy_old * dt + GRAVITY_EFF * dt * (dt + 1) / 2;
+        player.vy += g * dt;
+        player.y += vy_old * dt + g * dt * (dt + 1) / 2;
 
         // Move pillars
         const pillars = pillarsRef.current;
@@ -987,6 +992,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   // ─── Start / stop loop (mount-only) ─────────────────────────────
 
   useEffect(() => {
+    registerAudioUnlock(); // prime iOS audio on first user touch
     resizeCanvas();
     lastTimeRef.current = performance.now();
     levelStartScoreRef.current = 0;
