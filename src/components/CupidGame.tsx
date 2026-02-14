@@ -13,7 +13,7 @@ interface CupidGameProps {
 
 // ─── Game types ──────────────────────────────────────────────────────
 
-type GameScreen = 'countdown' | 'playing' | 'levelComplete' | 'gameOver' | 'bossFreeze' | 'bossExplode' | 'victory';
+type GameScreen = 'countdown' | 'playing' | 'levelComplete' | 'gameOver' | 'bossIntro' | 'bossFreeze' | 'bossExplode' | 'victory';
 
 interface Player {
   x: number;
@@ -251,6 +251,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const bossStartScoreRef = useRef(0);
   const explodeTimerRef = useRef(0);
   const explodePosRef = useRef({ x: 0, y: 0 });
+  const bossIntroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playerRef = useRef<Player>({ x: 80, y: 200, vy: 0, width: PLAYER_SIZE, height: PLAYER_SIZE });
   const pillarsRef = useRef<Pillar[]>([]);
@@ -442,6 +443,10 @@ export function CupidGame({ onBack }: CupidGameProps) {
     hasFlappedRef.current = false;
     diedDuringBossRef.current = false;
     newHighScoreRef.current = false;
+    if (bossIntroTimerRef.current !== null) {
+      clearTimeout(bossIntroTimerRef.current);
+      bossIntroTimerRef.current = null;
+    }
     screenRef.current = 'countdown';
     countdownRef.current = 3;
     countdownTimerRef.current = 0;
@@ -598,6 +603,16 @@ export function CupidGame({ onBack }: CupidGameProps) {
       return;
     }
 
+    // ── Boss intro announcement (frozen scene) ──
+    if (currentScreen === 'bossIntro') {
+      drawScene(ctx, w, h);
+      // Dark overlay — the React overlay renders the retro text
+      ctx.fillStyle = isDark() ? 'rgba(15, 23, 42, 0.6)' : 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(0, 0, w, h);
+      rafRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+
     // ── Playing ──
     if (currentScreen === 'playing') {
       const player = playerRef.current;
@@ -691,21 +706,32 @@ export function CupidGame({ onBack }: CupidGameProps) {
           return;
         }
 
-        // ── Boss logic (level 3) ──
+        // ── Boss logic ──
         const boss = bossRef.current;
         const allPillarsPassed = pillars.every(p => p.passed);
 
-        if (cfg.hasBoss && allPillarsPassed && !boss) {
+        if (cfg.hasBoss && allPillarsPassed && !boss && screenRef.current !== 'bossIntro') {
+          // Show "FINAL BOSS" / "MEGA BOSS" announcement before spawning
           bossStartScoreRef.current = scoreRef.current;
-          bossRef.current = {
-            x: w - 80,
-            y: h / 2,
-            health: 1,
-            maxHealth: 1,
-            phase: 0,
-            timer: 0,
-            shootCooldown: BOSS_SHOOT_INTERVAL,
-          };
+          screenRef.current = 'bossIntro';
+          setScreen('bossIntro');
+          // After 3.2s, spawn the boss and resume gameplay
+          bossIntroTimerRef.current = setTimeout(() => {
+            const { w: cw, h: ch } = canvasSizeRef.current;
+            bossRef.current = {
+              x: cw - 80,
+              y: ch / 2,
+              health: 1,
+              maxHealth: 1,
+              phase: 0,
+              timer: 0,
+              shootCooldown: BOSS_SHOOT_INTERVAL,
+            };
+            screenRef.current = 'playing';
+            setScreen('playing');
+          }, 3200);
+          rafRef.current = requestAnimationFrame(gameLoop);
+          return;
         }
 
         if (boss) {
@@ -1106,6 +1132,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       if (highScoreTimerRef.current !== null) clearTimeout(highScoreTimerRef.current);
+      if (bossIntroTimerRef.current !== null) clearTimeout(bossIntroTimerRef.current);
       window.removeEventListener('resize', handleResize);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1145,7 +1172,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
       ref={containerRef}
       className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 dark:from-slate-950 dark:via-gray-900 dark:to-slate-950 px-4 py-4 transition-colors duration-500"
     >
-      {/* Keyframes for retro high-score animation */}
+      {/* Keyframes for retro high-score and boss intro animations */}
       <style>{`
         @keyframes highScorePop {
           0%   { transform: scale(0.2) rotate(-5deg); opacity: 0; filter: blur(8px); }
@@ -1161,6 +1188,26 @@ export function CupidGame({ onBack }: CupidGameProps) {
         @keyframes highScoreStars {
           0%, 100% { transform: scale(1); opacity: 0.8; }
           50%      { transform: scale(1.3); opacity: 1; }
+        }
+        @keyframes bossIntroPop {
+          0%   { transform: scale(0) rotate(-8deg); opacity: 0; filter: blur(12px); }
+          6%   { transform: scale(2.2) rotate(3deg); opacity: 1; filter: blur(0); }
+          12%  { transform: scale(0.7) rotate(-2deg); opacity: 1; }
+          20%  { transform: scale(1.5) rotate(2deg); opacity: 1; }
+          28%  { transform: scale(0.9) rotate(0deg); opacity: 1; }
+          36%  { transform: scale(1.15) rotate(0deg); opacity: 1; }
+          44%  { transform: scale(1.0) rotate(0deg); opacity: 1; }
+          75%  { transform: scale(1.0) rotate(0deg); opacity: 1; }
+          100% { transform: scale(2.5) rotate(5deg); opacity: 0; filter: blur(14px); }
+        }
+        @keyframes bossIntroGlow {
+          0%, 100% { text-shadow: 0 0 20px rgba(239,68,68,0.6), 0 0 40px rgba(239,68,68,0.3); }
+          50%      { text-shadow: 0 0 30px rgba(239,68,68,0.9), 0 0 60px rgba(239,68,68,0.5), 0 0 80px rgba(147,51,234,0.3); }
+        }
+        @keyframes bossIntroEmoji {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          25%      { transform: scale(1.2) rotate(-5deg); }
+          75%      { transform: scale(1.2) rotate(5deg); }
         }
       `}</style>
       {/* Header */}
@@ -1217,6 +1264,33 @@ export function CupidGame({ onBack }: CupidGameProps) {
               </p>
               <p className={`text-xl font-bold ${textPrimary} mt-3`}>
                 {score}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* FINAL BOSS / MEGA BOSS retro announcement */}
+        {screen === 'bossIntro' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl">
+            <div
+              className="flex flex-col items-center"
+              style={{ animation: 'bossIntroPop 3.2s ease-out forwards' }}
+            >
+              <div className="text-5xl mb-4" style={{ animation: 'bossIntroEmoji 0.8s ease-in-out infinite' }}>
+                {level >= 3 ? '👹' : '😈'}
+              </div>
+              <p
+                className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-purple-500 to-red-500"
+                style={{
+                  fontFamily: '"Press Start 2P", "Courier New", monospace',
+                  fontSize: 'clamp(1.8rem, 6vw, 2.8rem)',
+                  letterSpacing: '0.08em',
+                  lineHeight: 1.3,
+                  textAlign: 'center',
+                  animation: 'bossIntroGlow 1.2s ease-in-out infinite',
+                }}
+              >
+                {level >= 3 ? config.game.megaBoss : config.game.finalBoss}
               </p>
             </div>
           </div>

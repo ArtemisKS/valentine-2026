@@ -108,8 +108,8 @@ export const config = {
   game: {
     /** Label on the play button shown after Yes is clicked */
     playButton: 'Play a Game',
-    /** Names for each of the 3 levels */
-    levelNames: ['Garden of Love', 'Sky of Hearts', "Cupid's Castle"],
+    /** Names for each level */
+    levelNames: ['Garden of Love', 'Sky of Hearts', "Cupid's Castle", "Cupid's Gauntlet"],
     /** Shown when the player loses */
     gameOver: 'Game Over!',
     /** Label on retry button */
@@ -122,11 +122,19 @@ export const config = {
     victoryMessage: 'Cupid conquers all!',
     /** Boss name displayed during level 3 */
     bossName: 'Anti-Cupid',
+    /** Mega Boss name displayed during bonus level */
+    megaBossName: 'Mega Cupid',
     /** Label for score display */
     scoreLabel: 'Score',
     /** Label for level display */
     levelLabel: 'Level',
     /** Shown when the player sets a new best score */
     newHighScore: 'NEW HIGH SCORE!',
+    /** Retro announcement before boss fights */
+    finalBoss: 'FINAL BOSS',
+    /** Retro announcement before mega boss */
+    megaBoss: 'MEGA BOSS',
+    /** CTA label to start bonus level from victory screen */
+    bonusLevel: 'Bonus Level',
   },
 };
