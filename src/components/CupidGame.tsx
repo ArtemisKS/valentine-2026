@@ -833,7 +833,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           bossStartScoreRef.current = scoreRef.current;
           screenRef.current = 'bossIntro';
           setScreen('bossIntro');
-          // After 3.2s, spawn the boss and resume gameplay
+          // After 3.2s, spawn the boss and show 3-2-1 countdown
           bossIntroTimerRef.current = setTimeout(() => {
             const { w: cw, h: ch } = canvasSizeRef.current;
             const isMega = levelRef.current >= 3;
@@ -846,8 +846,12 @@ export function CupidGame({ onBack }: CupidGameProps) {
               timer: 0,
               shootCooldown: isMega ? MEGA_BOSS_SHOOT_INTERVAL : BOSS_SHOOT_INTERVAL,
             };
-            screenRef.current = 'playing';
-            setScreen('playing');
+            // Reset countdown so player gets a 3-2-1 before boss fight starts
+            countdownRef.current = 3;
+            countdownTimerRef.current = 0;
+            setCountdown(3);
+            screenRef.current = 'countdown';
+            setScreen('countdown');
           }, 3200);
           rafRef.current = requestAnimationFrame(gameLoop);
           return;
@@ -1436,12 +1440,12 @@ export function CupidGame({ onBack }: CupidGameProps) {
         @keyframes bossIntroPop {
           0%   { transform: scale(0) rotate(-8deg); opacity: 0; filter: blur(12px); }
           6%   { transform: scale(2.2) rotate(3deg); opacity: 1; filter: blur(0); }
-          12%  { transform: scale(0.7) rotate(-2deg); opacity: 1; }
-          20%  { transform: scale(1.5) rotate(2deg); opacity: 1; }
-          28%  { transform: scale(0.9) rotate(0deg); opacity: 1; }
-          36%  { transform: scale(1.15) rotate(0deg); opacity: 1; }
-          44%  { transform: scale(1.0) rotate(0deg); opacity: 1; }
-          75%  { transform: scale(1.0) rotate(0deg); opacity: 1; }
+          12%  { transform: scale(0.7) rotate(-2deg); opacity: 1; filter: blur(0); }
+          20%  { transform: scale(1.5) rotate(2deg); opacity: 1; filter: blur(0); }
+          28%  { transform: scale(0.9) rotate(0deg); opacity: 1; filter: blur(0); }
+          36%  { transform: scale(1.15) rotate(0deg); opacity: 1; filter: blur(0); }
+          44%  { transform: scale(1.0) rotate(0deg); opacity: 1; filter: blur(0); }
+          85%  { transform: scale(1.0) rotate(0deg); opacity: 1; filter: blur(0); }
           100% { transform: scale(2.5) rotate(5deg); opacity: 0; filter: blur(14px); }
         }
         @keyframes bossIntroGlow {
