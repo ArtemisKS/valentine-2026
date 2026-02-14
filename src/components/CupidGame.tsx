@@ -74,6 +74,18 @@ interface Boss {
   shootCooldown: number;
 }
 
+interface FlyingHeart {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  emoji: string;
+  size: number;
+  rotation: number;
+  rotationSpeed: number;
+  opacity: number;
+}
+
 // ─── Level configs ───────────────────────────────────────────────────
 
 interface LevelConfig {
@@ -291,7 +303,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
   // Game state in refs to avoid re-renders during game loop
   const screenRef = useRef<GameScreen>('countdown');
-  const levelRef = useRef(0);
+  const levelRef = useRef(3); // DEBUG: start at level 4
   const scoreRef = useRef(0);
   const bestScoreRef = useRef(sessionBestScore);
   const levelStartScoreRef = useRef(0);
@@ -313,13 +325,16 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const playerArrowsRef = useRef<PlayerArrow[]>([]);
   const arrowCooldownRef = useRef(0);
   const windZonesRef = useRef<WindZone[]>([]);
+  const bossStunTimerRef = useRef(0);   // ticks remaining in angry/stun phase
+  const bossStunDurationRef = useRef(0); // total duration of current stun
+  const flyingHeartsRef = useRef<FlyingHeart[]>([]);
   const frameRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
 
   // React state for overlay screens only
   const [screen, setScreen] = useState<GameScreen>('countdown');
-  const [level, setLevel] = useState(0);
+  const [level, setLevel] = useState(3); // DEBUG: start at level 4
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(sessionBestScore);
   const [countdown, setCountdown] = useState(3);
@@ -474,15 +489,52 @@ export function CupidGame({ onBack }: CupidGameProps) {
     if (boss) {
       const isMega = lvl >= 3;
       const bossSize = isMega ? MEGA_BOSS_SIZE : BOSS_SIZE;
-      drawEmoji(ctx, isMega ? '👹' : '😈', bossSize, boss.x, boss.y);
+      const stunActive = isMega && bossStunTimerRef.current > 0;
+      const stunProgress = stunActive
+        ? 1 - bossStunTimerRef.current / bossStunDurationRef.current
+        : 0;
+
+      if (stunActive) {
+        // ── Angry freeze: boss does frustrated wobble in place ──
+        const stunT = bossStunDurationRef.current - bossStunTimerRef.current;
+        const intensity = 1 + stunProgress * 0.6; // escalates through stun
+        // Chaotic micro-movements: small up/down + left/right jitter
+        const wobbleY = Math.sin(stunT * 0.18 * intensity) * 6 * intensity
+          + Math.sin(stunT * 0.31) * 3;
+        const wobbleX = Math.sin(stunT * 0.14 * intensity) * 4 * intensity;
+        // Head-shake rotation (frustrated nodding)
+        const wobbleAngle = Math.sin(stunT * 0.22 * intensity) * 0.18 * intensity
+          + Math.sin(stunT * 0.37) * 0.06;
+        // Size pulsation — angry breathing (more pronounced)
+        const sizePulse = 1 + Math.sin(stunT * 0.2) * 0.14 * intensity;
+        ctx.save();
+        ctx.translate(boss.x + wobbleX, boss.y + wobbleY);
+        ctx.rotate(wobbleAngle);
+        drawEmoji(ctx, '👹', bossSize * sizePulse, 0, 0);
+        ctx.restore();
+      } else {
+        drawEmoji(ctx, isMega ? '👹' : '😈', bossSize, boss.x, boss.y);
+      }
 
       if (isMega) {
         // Mega boss: hearts-based HP display
         const heartsText = '❤️'.repeat(boss.health) + '🖤'.repeat(boss.maxHealth - boss.health);
-        ctx.font = '16px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(heartsText, boss.x, boss.y - bossSize / 2 - 16);
+        if (stunActive) {
+          // Pulsate remaining hearts in SIZE — scale up to ~1.5x
+          const stunT = bossStunDurationRef.current - bossStunTimerRef.current;
+          const heartScale = 1 + Math.sin(stunT * 0.3) * 0.4;
+          ctx.save();
+          ctx.translate(boss.x, boss.y - bossSize / 2 - 16);
+          ctx.scale(heartScale, heartScale);
+          ctx.font = '16px system-ui, sans-serif';
+          ctx.fillText(heartsText, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.font = '16px system-ui, sans-serif';
+          ctx.fillText(heartsText, boss.x, boss.y - bossSize / 2 - 16);
+        }
       } else {
         // Regular boss: distance-based HP bar
         const player = playerRef.current;
@@ -508,8 +560,26 @@ export function CupidGame({ onBack }: CupidGameProps) {
       const bossNameY = boss.y - bossSize / 2 - (isMega ? 32 : 28) - 8;
       ctx.font = `bold ${isMega ? 10 : 12}px system-ui, sans-serif`;
       ctx.fillStyle = isDark() ? '#fda4af' : '#881337';
+      if (stunActive) {
+        // Pulsate name during angry freeze
+        const stunT = bossStunDurationRef.current - bossStunTimerRef.current;
+        ctx.globalAlpha = 0.5 + Math.sin(stunT * 0.25) * 0.5;
+      }
       ctx.textAlign = 'center';
       ctx.fillText(isMega ? config.game.megaBossName : config.game.bossName, boss.x, bossNameY);
+      ctx.globalAlpha = 1;
+    }
+
+    // Flying hearts (lost heart animation during angry phase & death)
+    for (const fh of flyingHeartsRef.current) {
+      if (fh.opacity <= 0) continue;
+      ctx.save();
+      ctx.globalAlpha = fh.opacity;
+      ctx.translate(fh.x, fh.y);
+      ctx.rotate(fh.rotation);
+      drawEmoji(ctx, fh.emoji, fh.size, 0, 0);
+      ctx.restore();
+      ctx.globalAlpha = 1;
     }
 
     // Player arrows (mega boss fight)
@@ -540,6 +610,9 @@ export function CupidGame({ onBack }: CupidGameProps) {
     projectilesRef.current = [];
     playerArrowsRef.current = [];
     arrowCooldownRef.current = 0;
+    bossStunTimerRef.current = 0;
+    bossStunDurationRef.current = 0;
+    flyingHeartsRef.current = [];
     frameRef.current = 0;
     hasFlappedRef.current = false;
     diedDuringBossRef.current = false;
@@ -731,6 +804,51 @@ export function CupidGame({ onBack }: CupidGameProps) {
       frameRef.current += dt;
 
       if (hasFlappedRef.current) {
+        const isMegaStunned = levelRef.current >= 3 && bossStunTimerRef.current > 0;
+
+        // ── During mega boss stun: everything freezes except flying hearts ──
+        if (isMegaStunned) {
+          frameRef.current += dt;
+
+          // Update flying hearts (lost heart animation — slow fade for visibility)
+          for (const fh of flyingHeartsRef.current) {
+            fh.x += fh.vx * dt;
+            fh.y += fh.vy * dt;
+            fh.vy += 0.02 * dt;  // gentler gravity
+            fh.rotation += fh.rotationSpeed * dt;
+            fh.opacity -= 0.002 * dt;  // slow fade — visible for ~half the stun
+          }
+          flyingHeartsRef.current = flyingHeartsRef.current.filter(fh => fh.opacity > 0);
+
+          // Decrement stun timer
+          bossStunTimerRef.current -= dt;
+          if (bossStunTimerRef.current <= 0) {
+            bossStunTimerRef.current = 0;
+            const boss = bossRef.current;
+            if (boss) {
+              boss.shootCooldown = MEGA_BOSS_SHOOT_INTERVAL;
+            }
+          }
+
+          // Let existing projectiles drain off-screen
+          for (const proj of projectilesRef.current) {
+            proj.x += proj.vx * dt;
+          }
+          projectilesRef.current = projectilesRef.current.filter(p => p.x > -PROJECTILE_SIZE);
+
+          // Let existing arrows drain off-screen
+          for (const arrow of playerArrowsRef.current) {
+            arrow.x += arrow.vx * dt;
+          }
+          playerArrowsRef.current = playerArrowsRef.current.filter(a => a.x < w + ARROW_SIZE);
+
+          // Draw frozen scene + angry boss overlay
+          drawScene(ctx, w, h);
+
+          rafRef.current = requestAnimationFrame(gameLoop);
+          return;
+        }
+
         // Asymmetric gravity: stronger when rising (vy < 0) for "flappy" arcs,
         // normal when falling for a gentle descent.
         const g = GRAVITY_EFF * (player.vy < 0 ? RISE_GRAVITY_MULT : 1.0);
@@ -905,7 +1023,6 @@ export function CupidGame({ onBack }: CupidGameProps) {
             if (boss.shootCooldown <= 0) {
               boss.shootCooldown = shootInterval;
               sfxBossShoot();
-              // Randomised vertical offsets and slight speed variation
               const spread1 = (Math.random() - 0.5) * bossSize * 1.4;
               const spread2 = (Math.random() - 0.5) * bossSize * 1.4;
               const baseVx = cfg.speed + 2.5;
@@ -964,7 +1081,16 @@ export function CupidGame({ onBack }: CupidGameProps) {
                 boss.health--;
                 sfxCollectHeart(); // satisfying hit feedback
                 if (boss.health <= 0) {
-                  // Boss defeated!
+                  // Boss defeated! Spawn death heart animations
+                  const heartY = boss.y - bossSize / 2 - 16;
+                  flyingHeartsRef.current = [
+                    // Last ❤️ shatters
+                    { x: boss.x - 12, y: heartY, vx: -1.5, vy: -3, emoji: '💔', size: 20, rotation: 0, rotationSpeed: -0.15, opacity: 1 },
+                    // 🖤s scatter in different directions
+                    { x: boss.x - 18, y: heartY, vx: -3.5, vy: -2.5, emoji: '🖤', size: 18, rotation: 0, rotationSpeed: 0.2, opacity: 1 },
+                    { x: boss.x, y: heartY, vx: 0.5, vy: -4, emoji: '🖤', size: 18, rotation: 0, rotationSpeed: -0.18, opacity: 1 },
+                    { x: boss.x + 18, y: heartY, vx: 3.5, vy: -1.5, emoji: '🖤', size: 18, rotation: 0, rotationSpeed: 0.15, opacity: 1 },
+                  ];
                   updateBestScore();
                   explodePosRef.current = { x: boss.x, y: boss.y };
                   explodeTimerRef.current = 0;
@@ -974,7 +1100,29 @@ export function CupidGame({ onBack }: CupidGameProps) {
                   rafRef.current = requestAnimationFrame(gameLoop);
                   return;
                 }
-                break; // only one hit per frame
+                // ── Non-lethal hit: trigger angry/stun phase ──
+                const isSecondHit = boss.health === 1;
+                const stunDuration = isSecondHit ? 550 : 330; // ~5s vs ~3s
+                bossStunTimerRef.current = stunDuration;
+                bossStunDurationRef.current = stunDuration;
+                // Clear in-flight projectiles so player gets a breather
+                projectilesRef.current = [];
+                // Spawn lost heart flying away — slow drift so it's clearly visible
+                const heartFlyY = boss.y - bossSize / 2 - 16;
+                flyingHeartsRef.current.push({
+                  x: boss.x + (isSecondHit ? -8 : 8),
+                  y: heartFlyY,
+                  vx: (Math.random() - 0.5) * 2,
+                  vy: -1.2 - Math.random() * 0.8,
+                  emoji: '💔',
+                  size: 22,
+                  rotation: 0,
+                  rotationSpeed: (Math.random() > 0.5 ? 1 : -1) * (0.06 + Math.random() * 0.08),
+                  opacity: 1,
+                });
+                // Immediately enter stun — early return to frozen frame
+                rafRef.current = requestAnimationFrame(gameLoop);
+                return;
               }
             }
           }
@@ -1031,6 +1179,16 @@ export function CupidGame({ onBack }: CupidGameProps) {
       const isMegaDeath = levelRef.current >= 3;
       explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
+
+      // Update flying hearts (death heart scatter animation)
+      for (const fh of flyingHeartsRef.current) {
+        fh.x += fh.vx * dt;
+        fh.y += fh.vy * dt;
+        fh.vy += 0.04 * dt;
+        fh.rotation += fh.rotationSpeed * dt;
+        fh.opacity -= 0.004 * dt;
+      }
+      flyingHeartsRef.current = flyingHeartsRef.current.filter(fh => fh.opacity > 0);
       // Mega boss: ~25% longer phases, more pronounced agony
       const stillDuration = isMegaDeath ? 180 : 150;     // ~1.6s vs ~1.4s
       const trembleDuration = isMegaDeath ? 330 : 250;   // ~3.0s vs ~2.3s — much more agony
@@ -1169,6 +1327,18 @@ export function CupidGame({ onBack }: CupidGameProps) {
         ctx.globalAlpha = 1;
       }
 
+      // Draw flying hearts (death scatter — 💔 and 🖤 flying off)
+      for (const fh of flyingHeartsRef.current) {
+        if (fh.opacity <= 0) continue;
+        ctx.save();
+        ctx.globalAlpha = fh.opacity;
+        ctx.translate(fh.x, fh.y);
+        ctx.rotate(fh.rotation);
+        drawEmoji(ctx, fh.emoji, fh.size, 0, 0);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+
       // HUD
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
@@ -1199,6 +1369,16 @@ export function CupidGame({ onBack }: CupidGameProps) {
       const t = explodeTimerRef.current;
       const { x: bx, y: by } = explodePosRef.current;
       const duration = isMegaExplode ? 430 : 350; // mega: ~3.9s, regular: ~3.2s
+
+      // Continue flying hearts animation into explosion phase
+      for (const fh of flyingHeartsRef.current) {
+        fh.x += fh.vx * dt;
+        fh.y += fh.vy * dt;
+        fh.vy += 0.04 * dt;
+        fh.rotation += fh.rotationSpeed * dt;
+        fh.opacity -= 0.004 * dt;
+      }
+      flyingHeartsRef.current = flyingHeartsRef.current.filter(fh => fh.opacity > 0);
 
       drawBackground(ctx, w, h);
 
@@ -1330,6 +1510,18 @@ export function CupidGame({ onBack }: CupidGameProps) {
         ctx.fillRect(0, 0, w, h);
       }
 
+      // Draw flying hearts (continue from freeze phase)
+      for (const fh of flyingHeartsRef.current) {
+        if (fh.opacity <= 0) continue;
+        ctx.save();
+        ctx.globalAlpha = fh.opacity;
+        ctx.translate(fh.x, fh.y);
+        ctx.rotate(fh.rotation);
+        drawEmoji(ctx, fh.emoji, fh.size, 0, 0);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+
       // HUD
       const dark = isDark();
       ctx.textAlign = 'left';
@@ -1376,7 +1568,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     levelStartScoreRef.current = 0;
     scoreRef.current = 0;
     setScore(0);
-    initLevel(0, false);
+    initLevel(3, false); // DEBUG: start at level 4
     rafRef.current = requestAnimationFrame(gameLoop);
 
     const handleResize = () => resizeCanvas();
