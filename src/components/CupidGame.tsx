@@ -217,10 +217,10 @@ function generateWindZones(pillars: Pillar[], canvasHeight: number): WindZone[] 
     const p2 = pillars[i + 1];
     if (!p2) break;
     const midX = (p1.x + p1.width + p2.x) / 2;
-    const zoneW = 60;
-    const zoneH = canvasHeight * 0.4;
+    const zoneW = 35;
+    const zoneH = canvasHeight * 0.25;
     // Alternate up/down forces
-    const force = i % 4 === 1 ? -0.35 : 0.35;
+    const force = i % 4 === 1 ? -0.15 : 0.15;
     zones.push({
       x: midX - zoneW / 2,
       y: canvasHeight / 2 - zoneH / 2 + (Math.random() - 0.5) * canvasHeight * 0.2,
@@ -846,7 +846,10 @@ export function CupidGame({ onBack }: CupidGameProps) {
               timer: 0,
               shootCooldown: isMega ? MEGA_BOSS_SHOOT_INTERVAL : BOSS_SHOOT_INTERVAL,
             };
-            // Reset countdown so player gets a 3-2-1 before boss fight starts
+            // Reset countdown so player gets a 3-2-1 + tap-to-start before boss fight
+            hasFlappedRef.current = false;
+            playerRef.current.vy = 0;
+            playerRef.current.y = canvasSizeRef.current.h * 0.4;
             countdownRef.current = 3;
             countdownTimerRef.current = 0;
             setCountdown(3);
