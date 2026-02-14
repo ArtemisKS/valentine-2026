@@ -248,6 +248,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const countdownTimerRef = useRef(0);
   const hasFlappedRef = useRef(false);
   const diedDuringBossRef = useRef(false);
+  const bossStartScoreRef = useRef(0);
   const explodeTimerRef = useRef(0);
   const explodePosRef = useRef({ x: 0, y: 0 });
 
@@ -463,7 +464,9 @@ export function CupidGame({ onBack }: CupidGameProps) {
     }
 
     if (resetScore) {
-      scoreRef.current = levelStartScoreRef.current;
+      // Boss retry: reset to score when boss appeared (keeps pillar/heart points)
+      // Normal retry: reset to level start score
+      scoreRef.current = bossRespawn ? bossStartScoreRef.current : levelStartScoreRef.current;
       setScore(scoreRef.current);
     } else {
       levelStartScoreRef.current = scoreRef.current;
@@ -658,9 +661,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
             const bottomY = p.gapY + p.gapSize / 2;
             if (player.y < topH || player.y + player.height > bottomY) {
               sfxDie();
-              updateBestScore();
-              screenRef.current = 'gameOver';
-              setScreen('gameOver');
+              transitionToScreen('gameOver');
               rafRef.current = requestAnimationFrame(gameLoop);
               return;
             }
@@ -679,9 +680,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           if (bossRef.current) {
             diedDuringBossRef.current = true;
           }
-          updateBestScore();
-          screenRef.current = 'gameOver';
-          setScreen('gameOver');
+          transitionToScreen('gameOver');
           rafRef.current = requestAnimationFrame(gameLoop);
           return;
         }
@@ -691,6 +690,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
         const allPillarsPassed = pillars.every(p => p.passed);
 
         if (cfg.hasBoss && allPillarsPassed && !boss) {
+          bossStartScoreRef.current = scoreRef.current;
           bossRef.current = {
             x: w - 80,
             y: h / 2,
@@ -738,10 +738,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
             const dy = player.y + player.height / 2 - (proj.y + PROJECTILE_SIZE / 2);
             if (Math.sqrt(dx * dx + dy * dy) < (player.width / 2 + PROJECTILE_SIZE / 2) * 0.8) {
               sfxDie();
-              updateBestScore();
               diedDuringBossRef.current = true;
-              screenRef.current = 'gameOver';
-              setScreen('gameOver');
+              transitionToScreen('gameOver');
               rafRef.current = requestAnimationFrame(gameLoop);
               return;
             }
@@ -1142,7 +1140,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           </div>
         )}
 
-        {screen === 'gameOver' && (
+        {screen === 'gameOver' && !highScoreAnimating && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center rounded-2xl ${overlayBg} backdrop-blur-sm`}>
             <div className="text-5xl mb-4">💔</div>
             <h2 className={`text-2xl font-bold ${textPrimary} mb-2`}>
