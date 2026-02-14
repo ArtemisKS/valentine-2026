@@ -45,6 +45,12 @@ interface Projectile {
   vx: number;
 }
 
+interface PlayerArrow {
+  x: number;
+  y: number;
+  vx: number;
+}
+
 interface WindZone {
   x: number;
   y: number;
@@ -101,8 +107,14 @@ const PILLAR_SPACING = 250;
 const PLAYER_SIZE = 32;
 const HEART_SIZE = 24;
 const BOSS_SIZE = 48;
+const MEGA_BOSS_SIZE = 64;
 const PROJECTILE_SIZE = 20;
+const ARROW_SIZE = 14;
+const ARROW_SPEED = 5;
 const BOSS_SHOOT_INTERVAL = 78; // frames (~1.3s at 60fps, ~13% faster than original)
+const MEGA_BOSS_SHOOT_INTERVAL = 52; // ~50% more frequent than regular boss
+const MEGA_BOSS_HP = 3;
+const PLAYER_ARROW_INTERVAL = 40; // auto-fire rate (~0.7s)
 const BOSS_ADVANCE_SPEED = 0.34; // px per frame the player advances toward boss
 const FRAME_MS = 1000 / 110; // physics step duration — targets 110 ticks/sec on all devices
 
@@ -297,6 +309,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const heartsRef = useRef<Heart[]>([]);
   const bossRef = useRef<Boss | null>(null);
   const projectilesRef = useRef<Projectile[]>([]);
+  const playerArrowsRef = useRef<PlayerArrow[]>([]);
+  const arrowCooldownRef = useRef(0);
   const windZonesRef = useRef<WindZone[]>([]);
   const frameRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -457,32 +471,49 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     // Boss
     if (boss) {
-      drawEmoji(ctx, '😈', BOSS_SIZE, boss.x, boss.y);
+      const isMega = lvl >= 3;
+      const bossSize = isMega ? MEGA_BOSS_SIZE : BOSS_SIZE;
+      drawEmoji(ctx, isMega ? '👹' : '😈', bossSize, boss.x, boss.y);
 
-      // Boss HP bar — full when far, depletes as player approaches
-      const player = playerRef.current;
-      const bossLeft = boss.x - BOSS_SIZE / 2;
-      const playerRight = player.x + player.width;
-      const totalDist = bossLeft - (80 + PLAYER_SIZE); // initial player right edge
-      const currentDist = bossLeft - playerRight;
-      const remaining = Math.max(0, Math.min(1, currentDist / totalDist));
-      const barW = 80;
-      const barH = 8;
-      const barX = boss.x - barW / 2;
-      const barY = boss.y - BOSS_SIZE / 2 - 16;
-      ctx.fillStyle = '#4b5563';
-      ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = remaining > 0.5 ? '#22c55e' : remaining > 0.25 ? '#eab308' : '#ef4444';
-      ctx.fillRect(barX, barY, barW * remaining, barH);
-      ctx.strokeStyle = isDark() ? '#e5e7eb' : '#1f2937';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(barX, barY, barW, barH);
+      if (isMega) {
+        // Mega boss: hearts-based HP display
+        const heartsText = '❤️'.repeat(boss.health) + '🖤'.repeat(boss.maxHealth - boss.health);
+        ctx.font = '16px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(heartsText, boss.x, boss.y - bossSize / 2 - 16);
+      } else {
+        // Regular boss: distance-based HP bar
+        const player = playerRef.current;
+        const bossLeft = boss.x - bossSize / 2;
+        const playerRight = player.x + player.width;
+        const totalDist = bossLeft - (80 + PLAYER_SIZE);
+        const currentDist = bossLeft - playerRight;
+        const remaining = Math.max(0, Math.min(1, currentDist / totalDist));
+        const barW = 80;
+        const barH = 8;
+        const barX = boss.x - barW / 2;
+        const barY = boss.y - bossSize / 2 - 16;
+        ctx.fillStyle = '#4b5563';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = remaining > 0.5 ? '#22c55e' : remaining > 0.25 ? '#eab308' : '#ef4444';
+        ctx.fillRect(barX, barY, barW * remaining, barH);
+        ctx.strokeStyle = isDark() ? '#e5e7eb' : '#1f2937';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, barH);
+      }
 
       // Boss name
+      const bossNameY = boss.y - bossSize / 2 - (isMega ? 32 : 16) - 8;
       ctx.font = 'bold 12px system-ui, sans-serif';
       ctx.fillStyle = isDark() ? '#fda4af' : '#881337';
       ctx.textAlign = 'center';
-      ctx.fillText(lvl >= 3 ? config.game.megaBossName : config.game.bossName, boss.x, barY - 8);
+      ctx.fillText(isMega ? config.game.megaBossName : config.game.bossName, boss.x, bossNameY);
+    }
+
+    // Player arrows (mega boss fight)
+    for (const arrow of playerArrowsRef.current) {
+      drawEmoji(ctx, '🏹', ARROW_SIZE, arrow.x, arrow.y);
     }
 
     // Player (cupid emoji)
@@ -506,6 +537,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
     const { w, h } = canvasSizeRef.current;
     playerRef.current = { x: 80, y: h * 0.4, vy: 0, width: PLAYER_SIZE, height: PLAYER_SIZE };
     projectilesRef.current = [];
+    playerArrowsRef.current = [];
+    arrowCooldownRef.current = 0;
     frameRef.current = 0;
     hasFlappedRef.current = false;
     diedDuringBossRef.current = false;
@@ -520,16 +553,17 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     if (bossRespawn && cfg.hasBoss) {
       // Skip pillars — go straight to boss fight
+      const isMega = lvl >= 3;
       pillarsRef.current = pillarsRef.current.map(p => ({ ...p, passed: true, x: -100 }));
       heartsRef.current = [];
       bossRef.current = {
         x: w - 80,
         y: h / 2,
-        health: 1,
-        maxHealth: 1,
+        health: isMega ? MEGA_BOSS_HP : 1,
+        maxHealth: isMega ? MEGA_BOSS_HP : 1,
         phase: 0,
         timer: 0,
-        shootCooldown: BOSS_SHOOT_INTERVAL,
+        shootCooldown: isMega ? MEGA_BOSS_SHOOT_INTERVAL : BOSS_SHOOT_INTERVAL,
       };
     } else {
       pillarsRef.current = generatePillars(cfg, h);
@@ -802,14 +836,15 @@ export function CupidGame({ onBack }: CupidGameProps) {
           // After 3.2s, spawn the boss and resume gameplay
           bossIntroTimerRef.current = setTimeout(() => {
             const { w: cw, h: ch } = canvasSizeRef.current;
+            const isMega = levelRef.current >= 3;
             bossRef.current = {
               x: cw - 80,
               y: ch / 2,
-              health: 1,
-              maxHealth: 1,
+              health: isMega ? MEGA_BOSS_HP : 1,
+              maxHealth: isMega ? MEGA_BOSS_HP : 1,
               phase: 0,
               timer: 0,
-              shootCooldown: BOSS_SHOOT_INTERVAL,
+              shootCooldown: isMega ? MEGA_BOSS_SHOOT_INTERVAL : BOSS_SHOOT_INTERVAL,
             };
             screenRef.current = 'playing';
             setScreen('playing');
@@ -819,36 +854,58 @@ export function CupidGame({ onBack }: CupidGameProps) {
         }
 
         if (boss) {
+          const isMega = levelRef.current >= 3;
+          const bossSize = isMega ? MEGA_BOSS_SIZE : BOSS_SIZE;
+
           boss.timer += dt;
           boss.phase += 0.04 * dt;
           boss.y = h / 2 + Math.sin(boss.phase) * (h * 0.35);
 
-          // Player advances toward boss
-          player.x += BOSS_ADVANCE_SPEED * dt;
-
-          // Shoot frequency decreases as player gets closer
-          const totalDist = boss.x - BOSS_SIZE / 2 - (80 + PLAYER_SIZE);
-          const currentDist = boss.x - BOSS_SIZE / 2 - (player.x + player.width);
-          const closeness = 1 - Math.max(0, Math.min(1, currentDist / totalDist));
-          const adjustedInterval = BOSS_SHOOT_INTERVAL * (1 + closeness * 2);
-
-          boss.shootCooldown -= dt;
-          if (boss.shootCooldown <= 0) {
-            boss.shootCooldown = adjustedInterval;
-            sfxBossShoot();
-            projectilesRef.current.push({
-              x: boss.x,
-              y: boss.y + BOSS_SIZE / 2,
-              vx: -(cfg.speed + 2),
-            });
+          // Player advances toward boss (regular boss only — mega boss is stationary fight)
+          if (!isMega) {
+            player.x += BOSS_ADVANCE_SPEED * dt;
           }
 
+          // Boss shooting
+          const shootInterval = isMega ? MEGA_BOSS_SHOOT_INTERVAL : BOSS_SHOOT_INTERVAL;
+          if (!isMega) {
+            // Regular boss: shoot frequency decreases as player gets closer
+            const totalDist = boss.x - bossSize / 2 - (80 + PLAYER_SIZE);
+            const currentDist = boss.x - bossSize / 2 - (player.x + player.width);
+            const closeness = 1 - Math.max(0, Math.min(1, currentDist / totalDist));
+            const adjustedInterval = shootInterval * (1 + closeness * 2);
+            boss.shootCooldown -= dt;
+            if (boss.shootCooldown <= 0) {
+              boss.shootCooldown = adjustedInterval;
+              sfxBossShoot();
+              projectilesRef.current.push({
+                x: boss.x,
+                y: boss.y + bossSize / 2,
+                vx: -(cfg.speed + 2),
+              });
+            }
+          } else {
+            // Mega boss: dual projectiles, constant rate
+            boss.shootCooldown -= dt;
+            if (boss.shootCooldown <= 0) {
+              boss.shootCooldown = shootInterval;
+              sfxBossShoot();
+              // Two projectiles from different vertical positions
+              projectilesRef.current.push(
+                { x: boss.x - bossSize / 2, y: boss.y - bossSize / 3, vx: -(cfg.speed + 2.5) },
+                { x: boss.x - bossSize / 2, y: boss.y + bossSize / 3, vx: -(cfg.speed + 2.5) },
+              );
+            }
+          }
+
+          // Move projectiles
           const projectiles = projectilesRef.current;
           for (const proj of projectiles) {
             proj.x += proj.vx * dt;
           }
           projectilesRef.current = projectiles.filter(p => p.x > -PROJECTILE_SIZE);
 
+          // Projectile-player collision
           for (const proj of projectilesRef.current) {
             const dx = player.x + player.width / 2 - (proj.x + PROJECTILE_SIZE / 2);
             const dy = player.y + player.height / 2 - (proj.y + PROJECTILE_SIZE / 2);
@@ -861,18 +918,63 @@ export function CupidGame({ onBack }: CupidGameProps) {
             }
           }
 
-          // Player reaches boss — freeze before explosion!
-          const playerRight = player.x + player.width;
-          const bossLeft = boss.x - BOSS_SIZE / 2;
-          if (playerRight >= bossLeft) {
-            updateBestScore();
-            explodePosRef.current = { x: boss.x, y: boss.y };
-            explodeTimerRef.current = 0;
-            sfxBossFreeze();
-            screenRef.current = 'bossFreeze';
-            setScreen('bossFreeze');
-            rafRef.current = requestAnimationFrame(gameLoop);
-            return;
+          // ── Mega boss: player auto-fires arrows ──
+          if (isMega) {
+            arrowCooldownRef.current -= dt;
+            if (arrowCooldownRef.current <= 0) {
+              arrowCooldownRef.current = PLAYER_ARROW_INTERVAL;
+              playerArrowsRef.current.push({
+                x: player.x + player.width,
+                y: player.y + player.height / 2,
+                vx: ARROW_SPEED,
+              });
+            }
+
+            // Move arrows
+            for (const arrow of playerArrowsRef.current) {
+              arrow.x += arrow.vx * dt;
+            }
+            playerArrowsRef.current = playerArrowsRef.current.filter(a => a.x < w + ARROW_SIZE);
+
+            // Arrow-boss collision
+            for (let i = playerArrowsRef.current.length - 1; i >= 0; i--) {
+              const arrow = playerArrowsRef.current[i]!;
+              const dx = arrow.x - boss.x;
+              const dy = arrow.y - boss.y;
+              if (Math.sqrt(dx * dx + dy * dy) < (bossSize / 2 + ARROW_SIZE / 2)) {
+                playerArrowsRef.current.splice(i, 1);
+                boss.health--;
+                sfxCollectHeart(); // satisfying hit feedback
+                if (boss.health <= 0) {
+                  // Boss defeated!
+                  updateBestScore();
+                  explodePosRef.current = { x: boss.x, y: boss.y };
+                  explodeTimerRef.current = 0;
+                  sfxBossFreeze();
+                  screenRef.current = 'bossFreeze';
+                  setScreen('bossFreeze');
+                  rafRef.current = requestAnimationFrame(gameLoop);
+                  return;
+                }
+                break; // only one hit per frame
+              }
+            }
+          }
+
+          // Regular boss: player reaches boss — freeze before explosion!
+          if (!isMega) {
+            const playerRight = player.x + player.width;
+            const bossLeft = boss.x - bossSize / 2;
+            if (playerRight >= bossLeft) {
+              updateBestScore();
+              explodePosRef.current = { x: boss.x, y: boss.y };
+              explodeTimerRef.current = 0;
+              sfxBossFreeze();
+              screenRef.current = 'bossFreeze';
+              setScreen('bossFreeze');
+              rafRef.current = requestAnimationFrame(gameLoop);
+              return;
+            }
           }
         }
 
@@ -906,6 +1008,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     // ── Boss freeze (pre-explosion) — still → tremble → swell → explode ──
     if (currentScreen === 'bossFreeze') {
+      const freezeBossSize = levelRef.current >= 3 ? MEGA_BOSS_SIZE : BOSS_SIZE;
+      const freezeBossEmoji = levelRef.current >= 3 ? '👹' : '😈';
       explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
       const stillDuration = 150;    // ~1.4s of true freeze
@@ -934,8 +1038,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
       if (t <= stillDuration) {
         // ── Still phase: boss frozen in place, slight pulse ──
         const pulse = 1 + Math.sin(t * 0.15) * 0.03;
-        const s = BOSS_SIZE * pulse;
-        drawEmoji(ctx, '😈', s, bx, by);
+        const s = freezeBossSize * pulse;
+        drawEmoji(ctx, freezeBossEmoji, s, bx, by);
 
       } else if (t <= stillDuration + trembleDuration) {
         // ── Tremble phase: chaotic shaking that escalates ──
@@ -958,7 +1062,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
         // Size flicker — erratic pulses
         const sizeFlicker = 1 + Math.sin(trembleT * 0.5) * progress * 0.2 + Math.random() * progress * 0.08;
-        drawEmoji(ctx, '😈', BOSS_SIZE * sizeFlicker, shakeX, shakeY);
+        drawEmoji(ctx, freezeBossEmoji, freezeBossSize * sizeFlicker, shakeX, shakeY);
         ctx.globalAlpha = 1;
 
         // Pulsing warning glow — grows chaotically
@@ -1010,11 +1114,11 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
         // Boss stays clearly visible — full opacity with only slight flicker
         ctx.globalAlpha = 0.9 + Math.sin(swellT * 0.8) * 0.1;
-        drawEmoji(ctx, '😈', BOSS_SIZE * pumpScale, shakeX, shakeY);
+        drawEmoji(ctx, freezeBossEmoji, freezeBossSize * pumpScale, shakeX, shakeY);
         ctx.globalAlpha = 1;
 
         // Subtle glow behind boss — not too bright so boss stays prominent
-        const glowRadius = BOSS_SIZE * pumpScale * 0.7;
+        const glowRadius = freezeBossSize * pumpScale * 0.7;
         ctx.beginPath();
         ctx.arc(bx, by, glowRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(239, 68, 68, ${0.12 + progress * 0.15})`;
@@ -1024,7 +1128,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
         const sparkCount = Math.floor(2 + progress * 8);
         for (let i = 0; i < sparkCount; i++) {
           const angle = Math.random() * Math.PI * 2;
-          const dist = BOSS_SIZE * pumpScale * 0.5 + Math.random() * 30;
+          const dist = freezeBossSize * pumpScale * 0.5 + Math.random() * 30;
           ctx.globalAlpha = 0.3 + Math.random() * 0.5;
           drawEmoji(ctx, i % 2 === 0 ? '✨' : '💫', 14, bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist);
         }
@@ -1054,6 +1158,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
     // ── Boss explosion animation — grandiose finale ──
     if (currentScreen === 'bossExplode') {
+      const explBossSize = levelRef.current >= 3 ? MEGA_BOSS_SIZE : BOSS_SIZE;
+      const explBossEmoji = levelRef.current >= 3 ? '👹' : '😈';
       explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
       const { x: bx, y: by } = explodePosRef.current;
@@ -1095,8 +1201,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
         ctx.globalAlpha = scale;
         // Start large (from swell phase) and shrink
         const startScale = 2.0;
-        const s = BOSS_SIZE * (scale * startScale + 0.1);
-        const sprite = getEmojiSprite('😈', BOSS_SIZE);
+        const s = explBossSize * (scale * startScale + 0.1);
+        const sprite = getEmojiSprite(explBossEmoji, explBossSize);
         ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
         ctx.restore();
         ctx.globalAlpha = 1;
