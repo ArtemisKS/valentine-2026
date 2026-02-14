@@ -114,7 +114,7 @@ const ARROW_SPEED = 5;
 const BOSS_SHOOT_INTERVAL = 78; // frames (~1.3s at 60fps, ~13% faster than original)
 const MEGA_BOSS_SHOOT_INTERVAL = 52; // ~50% more frequent than regular boss
 const MEGA_BOSS_HP = 3;
-const PLAYER_ARROW_INTERVAL = 40; // auto-fire rate (~0.7s)
+const PLAYER_ARROW_INTERVAL = 80; // auto-fire rate (~1.4s)
 const BOSS_ADVANCE_SPEED = 0.34; // px per frame the player advances toward boss
 const FRAME_MS = 1000 / 110; // physics step duration — targets 110 ticks/sec on all devices
 
@@ -303,6 +303,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const explodeTimerRef = useRef(0);
   const explodePosRef = useRef({ x: 0, y: 0 });
   const bossIntroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playStartTimeRef = useRef(0); // timestamp when screen last became 'playing'
 
   const playerRef = useRef<Player>({ x: 80, y: 200, vy: 0, width: PLAYER_SIZE, height: PLAYER_SIZE });
   const pillarsRef = useRef<Pillar[]>([]);
@@ -622,6 +623,11 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
   const flap = useCallback(() => {
     if (screenRef.current === 'playing') {
+      // Grace period: ignore taps for 150ms after screen transitions to 'playing'
+      // to prevent race conditions where a touch event fires between the countdown
+      // ending (screenRef = 'playing') and the first game loop frame (which needs
+      // to render the "tap to start" hint before accepting input).
+      if (performance.now() - playStartTimeRef.current < 150) return;
       hasFlappedRef.current = true;
       playerRef.current.vy = FLAP_EFF;
       sfxFlap();
@@ -694,6 +700,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
         setCountdown(countdownRef.current);
         if (countdownRef.current <= 0) {
           sfxCountdownGo();
+          hasFlappedRef.current = false; // ensure tap-to-start after every countdown
+          playStartTimeRef.current = performance.now(); // grace period for flap()
           screenRef.current = 'playing';
           setScreen('playing');
         } else {
