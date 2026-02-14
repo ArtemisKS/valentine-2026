@@ -505,8 +505,8 @@ export function CupidGame({ onBack }: CupidGameProps) {
       }
 
       // Boss name
-      const bossNameY = boss.y - bossSize / 2 - (isMega ? 32 : 16) - 8;
-      ctx.font = 'bold 12px system-ui, sans-serif';
+      const bossNameY = boss.y - bossSize / 2 - (isMega ? 32 : 28) - 8;
+      ctx.font = `bold ${isMega ? 10 : 12}px system-ui, sans-serif`;
       ctx.fillStyle = isDark() ? '#fda4af' : '#881337';
       ctx.textAlign = 'center';
       ctx.fillText(isMega ? config.game.megaBossName : config.game.bossName, boss.x, bossNameY);
@@ -900,15 +900,18 @@ export function CupidGame({ onBack }: CupidGameProps) {
               });
             }
           } else {
-            // Mega boss: dual projectiles, constant rate
+            // Mega boss: chaotic dual projectiles from random spread
             boss.shootCooldown -= dt;
             if (boss.shootCooldown <= 0) {
               boss.shootCooldown = shootInterval;
               sfxBossShoot();
-              // Two projectiles from different vertical positions
+              // Randomised vertical offsets and slight speed variation
+              const spread1 = (Math.random() - 0.5) * bossSize * 1.4;
+              const spread2 = (Math.random() - 0.5) * bossSize * 1.4;
+              const baseVx = cfg.speed + 2.5;
               projectilesRef.current.push(
-                { x: boss.x - bossSize / 2, y: boss.y - bossSize / 3, vx: -(cfg.speed + 2.5) },
-                { x: boss.x - bossSize / 2, y: boss.y + bossSize / 3, vx: -(cfg.speed + 2.5) },
+                { x: boss.x - bossSize / 2, y: boss.y + spread1, vx: -(baseVx + Math.random() * 1.2) },
+                { x: boss.x - bossSize / 2, y: boss.y + spread2, vx: -(baseVx + Math.random() * 1.2) },
               );
             }
           }
@@ -1618,7 +1621,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
               {config.game.victory}
             </h2>
             <p className={`text-lg ${textSecondary} mb-1`}>
-              {config.game.victoryMessage}
+              {level >= 3 ? config.game.megaVictoryMessage : config.game.victoryMessage}
             </p>
             <p className={`text-lg font-bold ${textPrimary} mb-6`}>
               {config.game.scoreLabel}: {score}
@@ -1630,12 +1633,15 @@ export function CupidGame({ onBack }: CupidGameProps) {
             >
               {config.game.backToQuiz}
             </button>
-            {showBonusCta && (
+            {/* Reserve space so layout doesn't jump when bonus button fades in */}
+            {level + 1 < LEVELS.length && (
               <button
                 type="button"
-                onClick={handleBonusLevel}
-                className="mt-3 px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
-                style={{ animation: 'bonusFadeIn 0.6s ease-out forwards' }}
+                onClick={showBonusCta ? handleBonusLevel : undefined}
+                className={`mt-3 px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+                  showBonusCta ? '' : 'opacity-0 pointer-events-none'
+                }`}
+                style={showBonusCta ? { animation: 'bonusFadeIn 0.6s ease-out forwards' } : undefined}
               >
                 ⚡ {config.game.bonusLevel}
               </button>

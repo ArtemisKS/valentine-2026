@@ -118,12 +118,14 @@ export const config = {
     backToQuiz: 'Back to Valentine',
     /** Heading after defeating the boss */
     victory: 'You Won!',
-    /** Sub-message after victory */
+    /** Sub-message after defeating the regular boss */
     victoryMessage: 'Cupid conquers all!',
+    /** Sub-message after defeating the mega boss */
+    megaVictoryMessage: 'Cupid is invincible! 💘🚀',
     /** Boss name displayed during level 3 */
     bossName: 'Anti-Cupid',
     /** Mega Boss name displayed during bonus level */
-    megaBossName: 'Mega Cupid',
+    megaBossName: 'Mega Anti-Cupid',
     /** Label for score display */
     scoreLabel: 'Score',
     /** Label for level display */
