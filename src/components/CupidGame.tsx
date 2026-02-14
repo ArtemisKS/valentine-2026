@@ -88,8 +88,8 @@ const PLAYER_SIZE = 32;
 const HEART_SIZE = 24;
 const BOSS_SIZE = 48;
 const PROJECTILE_SIZE = 20;
-const BOSS_SHOOT_INTERVAL = 90; // frames (~1.5 seconds at 60fps)
-const BOSS_ADVANCE_SPEED = 0.4; // px per frame the player advances toward boss
+const BOSS_SHOOT_INTERVAL = 78; // frames (~1.3s at 60fps, ~13% faster than original)
+const BOSS_ADVANCE_SPEED = 0.34; // px per frame the player advances toward boss
 const FRAME_MS = 1000 / 110; // physics step duration — targets 110 ticks/sec on all devices
 
 // ─── Mobile-adaptive physics ──────────────────────────────────────────
@@ -393,8 +393,10 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
       // Boss HP bar — full when far, depletes as player approaches
       const player = playerRef.current;
-      const totalDist = boss.x - BOSS_SIZE / 2 - 80;
-      const currentDist = boss.x - BOSS_SIZE / 2 - (player.x + player.width);
+      const bossLeft = boss.x - BOSS_SIZE / 2;
+      const playerRight = player.x + player.width;
+      const totalDist = bossLeft - (80 + PLAYER_SIZE); // initial player right edge
+      const currentDist = bossLeft - playerRight;
       const remaining = Math.max(0, Math.min(1, currentDist / totalDist));
       const barW = 80;
       const barH = 8;
@@ -711,7 +713,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
           player.x += BOSS_ADVANCE_SPEED * dt;
 
           // Shoot frequency decreases as player gets closer
-          const totalDist = boss.x - BOSS_SIZE / 2 - 80;
+          const totalDist = boss.x - BOSS_SIZE / 2 - (80 + PLAYER_SIZE);
           const currentDist = boss.x - BOSS_SIZE / 2 - (player.x + player.width);
           const closeness = 1 - Math.max(0, Math.min(1, currentDist / totalDist));
           const adjustedInterval = BOSS_SHOOT_INTERVAL * (1 + closeness * 2);
