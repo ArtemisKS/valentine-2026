@@ -654,14 +654,18 @@ export function CupidGame({ onBack }: CupidGameProps) {
         }
 
         // Collision with pillars
+        // The emoji glyph has transparent padding around the visible shape,
+        // so we inset the hitbox by HITBOX_INSET px on every side to match
+        // what the player actually sees on screen.
+        const HITBOX_INSET = 6;
         for (const p of pillars) {
           if (
-            player.x + player.width > p.x &&
-            player.x < p.x + p.width
+            player.x + player.width - HITBOX_INSET > p.x &&
+            player.x + HITBOX_INSET < p.x + p.width
           ) {
             const topH = p.gapY - p.gapSize / 2;
             const bottomY = p.gapY + p.gapSize / 2;
-            if (player.y < topH || player.y + player.height > bottomY) {
+            if (player.y + HITBOX_INSET < topH || player.y + player.height - HITBOX_INSET > bottomY) {
               sfxDie();
               transitionToScreen('gameOver');
               rafRef.current = requestAnimationFrame(gameLoop);
