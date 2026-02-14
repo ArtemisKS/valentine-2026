@@ -1010,11 +1010,13 @@ export function CupidGame({ onBack }: CupidGameProps) {
     if (currentScreen === 'bossFreeze') {
       const freezeBossSize = levelRef.current >= 3 ? MEGA_BOSS_SIZE : BOSS_SIZE;
       const freezeBossEmoji = levelRef.current >= 3 ? '👹' : '😈';
+      const isMegaDeath = levelRef.current >= 3;
       explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
-      const stillDuration = 150;    // ~1.4s of true freeze
-      const trembleDuration = 250;  // ~2.3s of escalating trembling
-      const swellDuration = 275;    // ~2.5s of boss ballooning before it pops
+      // Mega boss: ~25% longer phases, more pronounced agony
+      const stillDuration = isMegaDeath ? 180 : 150;     // ~1.6s vs ~1.4s
+      const trembleDuration = isMegaDeath ? 330 : 250;   // ~3.0s vs ~2.3s — much more agony
+      const swellDuration = isMegaDeath ? 340 : 275;     // ~3.1s vs ~2.5s
       const totalFreeze = stillDuration + trembleDuration + swellDuration;
 
       // Draw frozen scene
@@ -1043,11 +1045,13 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
       } else if (t <= stillDuration + trembleDuration) {
         // ── Tremble phase: chaotic shaking that escalates ──
+        // Mega boss: more violent shaking, bigger glow, more sparks
         const trembleT = t - stillDuration;
         const progress = trembleT / trembleDuration;
+        const megaMult = isMegaDeath ? 1.4 : 1.0; // intensity multiplier
 
         // Non-linear intensity: starts mild, escalates dramatically
-        const intensity = Math.pow(progress, 1.8) * 25;
+        const intensity = Math.pow(progress, 1.8) * 25 * megaMult;
         // Mix of high-frequency jitter + low-frequency lurches
         const jitterX = (Math.random() - 0.5) * intensity;
         const jitterY = (Math.random() - 0.5) * intensity;
@@ -1057,17 +1061,21 @@ export function CupidGame({ onBack }: CupidGameProps) {
         const shakeY = by + jitterY + lurchY;
 
         // Boss flashes with increasing frequency and erratic alpha
-        const flashSpeed = 0.3 + progress * 1.2;
+        const flashSpeed = 0.3 + progress * (isMegaDeath ? 1.6 : 1.2);
         ctx.globalAlpha = 0.5 + Math.sin(trembleT * flashSpeed) * 0.3 + Math.random() * progress * 0.2;
 
-        // Size flicker — erratic pulses
-        const sizeFlicker = 1 + Math.sin(trembleT * 0.5) * progress * 0.2 + Math.random() * progress * 0.08;
+        // Size flicker — erratic pulses (mega: bigger fluctuations)
+        const flickerAmp = isMegaDeath ? 0.3 : 0.2;
+        const flickerNoise = isMegaDeath ? 0.12 : 0.08;
+        const sizeFlicker = 1 + Math.sin(trembleT * 0.5) * progress * flickerAmp + Math.random() * progress * flickerNoise;
         drawEmoji(ctx, freezeBossEmoji, freezeBossSize * sizeFlicker, shakeX, shakeY);
         ctx.globalAlpha = 1;
 
-        // Pulsing warning glow — grows chaotically
-        const glowRadius = 35 + progress * 40 + Math.sin(trembleT * 0.35) * 20;
-        const glowAlpha = 0.1 + progress * 0.4;
+        // Pulsing warning glow — grows chaotically (mega: larger radius)
+        const baseGlow = isMegaDeath ? 45 : 35;
+        const glowGrowth = isMegaDeath ? 55 : 40;
+        const glowRadius = baseGlow + progress * glowGrowth + Math.sin(trembleT * 0.35) * 20;
+        const glowAlpha = 0.1 + progress * (isMegaDeath ? 0.5 : 0.4);
         ctx.beginPath();
         ctx.arc(bx, by, glowRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(239, 68, 68, ${glowAlpha})`;
@@ -1075,22 +1083,23 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
         // Inner glow ring
         if (progress > 0.3) {
-          const innerAlpha = (progress - 0.3) * 0.6;
+          const innerAlpha = (progress - 0.3) * (isMegaDeath ? 0.8 : 0.6);
           ctx.beginPath();
           ctx.arc(bx, by, glowRadius * 0.5, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(251, 191, 36, ${innerAlpha})`;
           ctx.fill();
         }
 
-        // Sparks start flying off during late tremble
-        if (progress > 0.5) {
-          const sparkAlpha = (progress - 0.5) * 1.5;
-          const sparkCount = Math.floor(progress * 6);
+        // Sparks start flying off during late tremble (mega: more sparks, earlier)
+        const sparkThreshold = isMegaDeath ? 0.35 : 0.5;
+        if (progress > sparkThreshold) {
+          const sparkAlpha = (progress - sparkThreshold) * 1.5;
+          const sparkCount = Math.floor(progress * (isMegaDeath ? 10 : 6));
           for (let i = 0; i < sparkCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const dist = 20 + Math.random() * 30 * progress;
+            const dist = 20 + Math.random() * (isMegaDeath ? 45 : 30) * progress;
             ctx.globalAlpha = sparkAlpha * (0.3 + Math.random() * 0.7);
-            drawEmoji(ctx, '✨', 14, bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist);
+            drawEmoji(ctx, '✨', isMegaDeath ? 18 : 14, bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist);
           }
           ctx.globalAlpha = 1;
         }
@@ -1100,37 +1109,44 @@ export function CupidGame({ onBack }: CupidGameProps) {
         const swellT = t - stillDuration - trembleDuration;
         const progress = swellT / swellDuration;
 
-        // Trembling while growing — not smooth, jerky balloon pumps
-        const jitter = (Math.random() - 0.5) * (12 + progress * 10);
+        // Trembling while growing — mega boss shakes harder
+        const shakeIntensity = isMegaDeath ? 18 : 12;
+        const shakeGrowth = isMegaDeath ? 14 : 10;
+        const jitter = (Math.random() - 0.5) * (shakeIntensity + progress * shakeGrowth);
         const shakeX = bx + jitter;
-        const shakeY = by + (Math.random() - 0.5) * (12 + progress * 10);
+        const shakeY = by + (Math.random() - 0.5) * (shakeIntensity + progress * shakeGrowth);
 
-        // Boss balloons from 1x to 2.8x — irregular pumping, not smooth
-        const baseGrow = 1 + progress * 1.8; // 1x → 2.8x
-        // Jerky pump pulses that get faster as it's about to pop
-        const pumpFreq = 0.4 + progress * 1.2;
-        const pumpAmp = 0.12 + progress * 0.15;
-        const pumpScale = baseGrow + Math.sin(swellT * pumpFreq) * pumpAmp + Math.random() * progress * 0.06;
+        // Boss balloons — mega: 1x→2.5x, regular: 1x→2.8x
+        const maxGrow = isMegaDeath ? 1.5 : 1.8;
+        const baseGrow = 1 + progress * maxGrow;
+        // Jerky pump pulses that get faster as it's about to pop (mega: more aggressive)
+        const pumpFreq = isMegaDeath ? 0.5 + progress * 1.6 : 0.4 + progress * 1.2;
+        const pumpAmp = isMegaDeath ? 0.16 + progress * 0.2 : 0.12 + progress * 0.15;
+        const pumpNoise = isMegaDeath ? 0.1 : 0.06;
+        const pumpScale = baseGrow + Math.sin(swellT * pumpFreq) * pumpAmp + Math.random() * progress * pumpNoise;
 
         // Boss stays clearly visible — full opacity with only slight flicker
         ctx.globalAlpha = 0.9 + Math.sin(swellT * 0.8) * 0.1;
         drawEmoji(ctx, freezeBossEmoji, freezeBossSize * pumpScale, shakeX, shakeY);
         ctx.globalAlpha = 1;
 
-        // Subtle glow behind boss — not too bright so boss stays prominent
-        const glowRadius = freezeBossSize * pumpScale * 0.7;
+        // Glow behind boss (mega: brighter, larger)
+        const glowRadius = freezeBossSize * pumpScale * (isMegaDeath ? 0.85 : 0.7);
         ctx.beginPath();
         ctx.arc(bx, by, glowRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(239, 68, 68, ${0.12 + progress * 0.15})`;
+        const glowBase = isMegaDeath ? 0.18 : 0.12;
+        const glowPeak = isMegaDeath ? 0.22 : 0.15;
+        ctx.fillStyle = `rgba(239, 68, 68, ${glowBase + progress * glowPeak})`;
         ctx.fill();
 
-        // Small sparks flying off — increasing as he's about to pop
-        const sparkCount = Math.floor(2 + progress * 8);
+        // Sparks flying off — mega boss: more and bigger
+        const sparkCount = Math.floor((isMegaDeath ? 4 : 2) + progress * (isMegaDeath ? 12 : 8));
+        const sparkSize = isMegaDeath ? 18 : 14;
         for (let i = 0; i < sparkCount; i++) {
           const angle = Math.random() * Math.PI * 2;
-          const dist = freezeBossSize * pumpScale * 0.5 + Math.random() * 30;
+          const dist = freezeBossSize * pumpScale * 0.5 + Math.random() * (isMegaDeath ? 45 : 30);
           ctx.globalAlpha = 0.3 + Math.random() * 0.5;
-          drawEmoji(ctx, i % 2 === 0 ? '✨' : '💫', 14, bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist);
+          drawEmoji(ctx, i % 2 === 0 ? '✨' : '💫', sparkSize, bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist);
         }
         ctx.globalAlpha = 1;
       }
@@ -1160,10 +1176,11 @@ export function CupidGame({ onBack }: CupidGameProps) {
     if (currentScreen === 'bossExplode') {
       const explBossSize = levelRef.current >= 3 ? MEGA_BOSS_SIZE : BOSS_SIZE;
       const explBossEmoji = levelRef.current >= 3 ? '👹' : '😈';
+      const isMegaExplode = levelRef.current >= 3;
       explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
       const { x: bx, y: by } = explodePosRef.current;
-      const duration = 350; // ~3.2s — grand explosion
+      const duration = isMegaExplode ? 430 : 350; // mega: ~3.9s, regular: ~3.2s
 
       drawBackground(ctx, w, h);
 
@@ -1171,36 +1188,38 @@ export function CupidGame({ onBack }: CupidGameProps) {
       const player = playerRef.current;
       drawEmoji(ctx, '💘', PLAYER_SIZE, player.x + player.width / 2, player.y + player.height / 2);
 
-      // Expanding shockwave rings — 7 rings, staggered
-      const ringCount = 7;
+      // Expanding shockwave rings (mega: 9 rings, thicker, faster expanding)
+      const ringCount = isMegaExplode ? 9 : 7;
       for (let i = 0; i < ringCount; i++) {
-        const delay = i * 12;
+        const delay = i * (isMegaExplode ? 10 : 12);
         const ringT = t - delay;
         if (ringT <= 0) continue;
-        const radius = ringT * 4.5;
-        const alpha = Math.max(0, 1 - ringT / 70);
+        const radius = ringT * (isMegaExplode ? 5.5 : 4.5);
+        const alpha = Math.max(0, 1 - ringT / (isMegaExplode ? 85 : 70));
         ctx.beginPath();
         ctx.arc(bx, by, radius, 0, Math.PI * 2);
         const colors = [
           [239, 68, 68], [251, 146, 243], [251, 191, 36],
           [239, 68, 68], [147, 51, 234], [251, 146, 243], [251, 191, 36],
+          [239, 68, 68], [147, 51, 234],
         ];
-        const [r, g, b] = colors[i]!;
+        const [r, g, b] = colors[i % colors.length]!;
         ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        ctx.lineWidth = 5 - i * 0.5;
+        ctx.lineWidth = (isMegaExplode ? 7 : 5) - i * 0.5;
         ctx.stroke();
       }
 
-      // Boss shrinks, spins rapidly, and fades
-      if (t < 80) {
-        const scale = Math.max(0, 1 - t / 80);
-        const rotation = t * 0.3;
+      // Boss shrinks, spins rapidly, and fades (mega: longer shrink)
+      const shrinkDuration = isMegaExplode ? 100 : 80;
+      if (t < shrinkDuration) {
+        const scale = Math.max(0, 1 - t / shrinkDuration);
+        const rotation = t * (isMegaExplode ? 0.4 : 0.3);
         ctx.save();
         ctx.translate(bx, by);
         ctx.rotate(rotation);
         ctx.globalAlpha = scale;
         // Start large (from swell phase) and shrink
-        const startScale = 2.0;
+        const startScale = isMegaExplode ? 2.5 : 2.0;
         const s = explBossSize * (scale * startScale + 0.1);
         const sprite = getEmojiSprite(explBossEmoji, explBossSize);
         ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
@@ -1208,69 +1227,88 @@ export function CupidGame({ onBack }: CupidGameProps) {
         ctx.globalAlpha = 1;
       }
 
-      // Wave 1 — large explosion emojis flying outward (28 particles)
-      const bursts1 = [
+      // Wave 1 — large explosion emojis flying outward
+      const bursts1Base = [
         '💥', '✨', '💫', '⭐', '💥', '🔥', '✨', '💥', '⭐', '🔥',
         '💫', '✨', '💥', '⭐', '🔥', '💥', '✨', '💫', '⭐', '🔥',
         '💥', '✨', '⭐', '🔥', '💫', '💥', '✨', '⭐',
       ];
+      // Mega: add extra particles
+      const bursts1 = isMegaExplode
+        ? [...bursts1Base, '💥', '🔥', '✨', '💫', '⭐', '💥', '🔥', '✨']
+        : bursts1Base;
+      const wave1Size = isMegaExplode ? 38 : 32;
       for (let i = 0; i < bursts1.length; i++) {
         const angle = (i / bursts1.length) * Math.PI * 2 + t * 0.012;
-        const dist = t * 3.5;
+        const dist = t * (isMegaExplode ? 4.2 : 3.5);
         const alpha = Math.max(0, 1 - t / duration);
         const ex = bx + Math.cos(angle) * dist;
         const ey = by + Math.sin(angle) * dist;
         ctx.globalAlpha = alpha;
-        drawEmoji(ctx, bursts1[i]!, 32, ex, ey);
+        drawEmoji(ctx, bursts1[i]!, wave1Size, ex, ey);
       }
 
-      // Wave 2 — delayed heart burst (love conquers all, 18 hearts)
+      // Wave 2 — delayed heart burst (love conquers all)
       if (t > 20) {
-        const wave2 = [
+        const wave2Base = [
           '💖', '💝', '💗', '💘', '💞', '💓', '💖', '💝', '💗',
           '💘', '💞', '💓', '💖', '💝', '💗', '💘', '💞', '💓',
         ];
+        const wave2 = isMegaExplode
+          ? [...wave2Base, '💖', '💝', '💗', '💘', '💞', '💓', '💖']
+          : wave2Base;
+        const wave2Size = isMegaExplode ? 32 : 26;
         for (let i = 0; i < wave2.length; i++) {
           const angle = (i / wave2.length) * Math.PI * 2 + Math.PI / 9;
-          const dist = (t - 20) * 2.5;
+          const dist = (t - 20) * (isMegaExplode ? 3.0 : 2.5);
           const alpha = Math.max(0, 1 - (t - 20) / (duration - 20));
           const ex = bx + Math.cos(angle) * dist;
           const ey = by + Math.sin(angle) * dist;
           ctx.globalAlpha = alpha;
-          drawEmoji(ctx, wave2[i]!, 26, ex, ey);
+          drawEmoji(ctx, wave2[i]!, wave2Size, ex, ey);
         }
       }
 
-      // Wave 3 — late sparkle burst (fills the screen, 25 sparkles)
+      // Wave 3 — late sparkle burst (fills the screen)
       if (t > 50) {
-        const wave3 = [
+        const wave3Base = [
           '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨',
           '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟',
           '⭐', '✨', '🌟', '⭐', '✨',
         ];
+        const wave3 = isMegaExplode
+          ? [...wave3Base, '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟']
+          : wave3Base;
+        const wave3Size = isMegaExplode ? 24 : 20;
         for (let i = 0; i < wave3.length; i++) {
           const angle = (i / wave3.length) * Math.PI * 2 + Math.PI / 4;
-          const dist = (t - 50) * 2.0;
+          const dist = (t - 50) * (isMegaExplode ? 2.4 : 2.0);
           const alpha = Math.max(0, 1 - (t - 50) / (duration - 50));
           const ex = bx + Math.cos(angle) * dist;
           const ey = by + Math.sin(angle) * dist;
           ctx.globalAlpha = alpha;
-          drawEmoji(ctx, wave3[i]!, 20, ex, ey);
+          drawEmoji(ctx, wave3[i]!, wave3Size, ex, ey);
         }
       }
       ctx.globalAlpha = 1;
 
-      // Screen flash — dramatic white flash + secondary pink pulse + tertiary gold
+      // Screen flash — mega boss: brighter, extra purple pulse
       if (t < 15) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * (1 - t / 15)})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${(isMegaExplode ? 0.95 : 0.8) * (1 - t / 15)})`;
         ctx.fillRect(0, 0, w, h);
       } else if (t > 25 && t < 40) {
         const flashT = (t - 25) / 15;
-        ctx.fillStyle = `rgba(251, 146, 243, ${0.35 * (1 - flashT)})`;
+        ctx.fillStyle = `rgba(251, 146, 243, ${(isMegaExplode ? 0.45 : 0.35) * (1 - flashT)})`;
         ctx.fillRect(0, 0, w, h);
       } else if (t > 55 && t < 70) {
         const flashT = (t - 55) / 15;
-        ctx.fillStyle = `rgba(251, 191, 36, ${0.2 * (1 - flashT)})`;
+        ctx.fillStyle = `rgba(251, 191, 36, ${(isMegaExplode ? 0.3 : 0.2) * (1 - flashT)})`;
+        ctx.fillRect(0, 0, w, h);
+      }
+      // Mega boss: extra purple flash
+      if (isMegaExplode && t > 80 && t < 100) {
+        const flashT = (t - 80) / 20;
+        ctx.fillStyle = `rgba(147, 51, 234, ${0.3 * (1 - flashT)})`;
         ctx.fillRect(0, 0, w, h);
       }
 
