@@ -45,6 +45,17 @@ interface Projectile {
   vx: number;
 }
 
+interface WindZone {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Vertical push force (negative = up, positive = down) */
+  force: number;
+  /** Animation phase */
+  phase: number;
+}
+
 interface Boss {
   x: number;
   y: number;
@@ -70,12 +81,15 @@ interface LevelConfig {
   /** Sine wave amplitude for moving pillars (px per frame) */
   pillarWaveAmplitude: number;
   hasBoss: boolean;
+  /** Whether this level has wind zones between pillars */
+  hasWind: boolean;
 }
 
 const LEVELS: LevelConfig[] = [
-  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 4, heartPoints: 2, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false },
-  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 6, heartPoints: 3, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false },
-  { pillarCount: 10, gapSize: 205, speed: 1.6, heartCount: 10, heartPoints: 4, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true },
+  { pillarCount: 6, gapSize: 240, speed: 1.2, heartCount: 4, heartPoints: 2, movingPillars: false, pillarWaveAmplitude: 0, hasBoss: false, hasWind: false },
+  { pillarCount: 8, gapSize: 220, speed: 1.4, heartCount: 6, heartPoints: 3, movingPillars: true, pillarWaveAmplitude: 0.4, hasBoss: false, hasWind: false },
+  { pillarCount: 10, gapSize: 205, speed: 1.6, heartCount: 10, heartPoints: 4, movingPillars: true, pillarWaveAmplitude: 0.6, hasBoss: true, hasWind: false },
+  { pillarCount: 13, gapSize: 175, speed: 2.0, heartCount: 12, heartPoints: 5, movingPillars: true, pillarWaveAmplitude: 0.8, hasBoss: true, hasWind: true },
 ];
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -182,6 +196,31 @@ function generateHearts(pillars: Pillar[], count: number): Heart[] {
   });
 }
 
+/** Generate wind zones between some pillars (only for levels with hasWind). */
+function generateWindZones(pillars: Pillar[], canvasHeight: number): WindZone[] {
+  const zones: WindZone[] = [];
+  // Place wind zones between every 2nd and 3rd pillar
+  for (let i = 1; i < pillars.length - 1; i += 2) {
+    const p1 = pillars[i]!;
+    const p2 = pillars[i + 1];
+    if (!p2) break;
+    const midX = (p1.x + p1.width + p2.x) / 2;
+    const zoneW = 60;
+    const zoneH = canvasHeight * 0.4;
+    // Alternate up/down forces
+    const force = i % 4 === 1 ? -0.35 : 0.35;
+    zones.push({
+      x: midX - zoneW / 2,
+      y: canvasHeight / 2 - zoneH / 2 + (Math.random() - 0.5) * canvasHeight * 0.2,
+      width: zoneW,
+      height: zoneH,
+      force,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
+  return zones;
+}
+
 // ─── Victory fireworks ───────────────────────────────────────────────
 
 function triggerVictoryFireworks(): void {
@@ -258,6 +297,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const heartsRef = useRef<Heart[]>([]);
   const bossRef = useRef<Boss | null>(null);
   const projectilesRef = useRef<Projectile[]>([]);
+  const windZonesRef = useRef<WindZone[]>([]);
   const frameRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
@@ -270,6 +310,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
   const [countdown, setCountdown] = useState(3);
   const newHighScoreRef = useRef(false);
   const [highScoreAnimating, setHighScoreAnimating] = useState(false);
+  const [showBonusCta, setShowBonusCta] = useState(false);
   const highScoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canvasSizeRef = useRef({ w: 400, h: 500 });
@@ -377,6 +418,32 @@ export function CupidGame({ onBack }: CupidGameProps) {
       drawPillar(ctx, p.x, p.gapY, p.gapSize, p.width, h);
     }
 
+    // Wind zones (semi-transparent swirl indicators)
+    for (const wz of windZonesRef.current) {
+      if (wz.x + wz.width < 0 || wz.x > w) continue;
+      const isUp = wz.force < 0;
+      ctx.save();
+      ctx.globalAlpha = 0.18 + Math.sin(wz.phase) * 0.06;
+      // Gradient streak
+      const grad = ctx.createLinearGradient(wz.x, wz.y, wz.x, wz.y + wz.height);
+      if (isUp) {
+        grad.addColorStop(0, 'rgba(96, 165, 250, 0.5)');
+        grad.addColorStop(1, 'rgba(96, 165, 250, 0)');
+      } else {
+        grad.addColorStop(0, 'rgba(251, 146, 60, 0)');
+        grad.addColorStop(1, 'rgba(251, 146, 60, 0.5)');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(wz.x, wz.y, wz.width, wz.height);
+      ctx.restore();
+      // Arrow emojis indicating direction
+      const arrowEmoji = isUp ? '🌬️' : '💨';
+      const arrowY = wz.y + wz.height / 2 + Math.sin(wz.phase * 2) * 15;
+      ctx.globalAlpha = 0.5 + Math.sin(wz.phase) * 0.2;
+      drawEmoji(ctx, arrowEmoji, 20, wz.x + wz.width / 2, arrowY);
+      ctx.globalAlpha = 1;
+    }
+
     // Hearts
     for (const heart of hearts) {
       if (heart.collected || heart.x < -HEART_SIZE || heart.x > w + HEART_SIZE) continue;
@@ -415,7 +482,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
       ctx.font = 'bold 12px system-ui, sans-serif';
       ctx.fillStyle = isDark() ? '#fda4af' : '#881337';
       ctx.textAlign = 'center';
-      ctx.fillText(config.game.bossName, boss.x, barY - 8);
+      ctx.fillText(lvl >= 3 ? config.game.megaBossName : config.game.bossName, boss.x, barY - 8);
     }
 
     // Player (cupid emoji)
@@ -467,6 +534,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     } else {
       pillarsRef.current = generatePillars(cfg, h);
       heartsRef.current = generateHearts(pillarsRef.current, cfg.heartCount);
+      windZonesRef.current = cfg.hasWind ? generateWindZones(pillarsRef.current, h) : [];
       bossRef.current = null;
     }
 
@@ -641,6 +709,22 @@ export function CupidGame({ onBack }: CupidGameProps) {
         const hearts = heartsRef.current;
         for (const heart of hearts) {
           heart.x -= cfg.speed * dt;
+        }
+
+        // Move and animate wind zones
+        const windZones = windZonesRef.current;
+        for (const wz of windZones) {
+          wz.x -= cfg.speed * dt;
+          wz.phase += 0.06 * dt;
+        }
+
+        // Apply wind forces to player
+        for (const wz of windZones) {
+          const px = player.x + player.width / 2;
+          const py = player.y + player.height / 2;
+          if (px > wz.x && px < wz.x + wz.width && py > wz.y && py < wz.y + wz.height) {
+            player.vy += wz.force * dt;
+          }
         }
 
         // Check pillar passing
@@ -1097,7 +1181,14 @@ export function CupidGame({ onBack }: CupidGameProps) {
       // Transition to victory
       if (t >= duration) {
         sfxVictory();
-        transitionToScreen('victory', triggerVictoryFireworks);
+        setShowBonusCta(false);
+        transitionToScreen('victory', () => {
+          triggerVictoryFireworks();
+          // Show bonus level CTA after 1s delay, only if there's a next level
+          if (levelRef.current + 1 < LEVELS.length) {
+            setTimeout(() => setShowBonusCta(true), 1000);
+          }
+        });
       }
 
       rafRef.current = requestAnimationFrame(gameLoop);
@@ -1156,6 +1247,15 @@ export function CupidGame({ onBack }: CupidGameProps) {
     initLevel(levelRef.current, true, bossRetry);
   };
 
+  const handleBonusLevel = () => {
+    const next = levelRef.current + 1;
+    if (next >= LEVELS.length) return;
+    levelRef.current = next;
+    setLevel(next);
+    setShowBonusCta(false);
+    initLevel(next, false);
+  };
+
   const handleCanvasInteraction = () => {
     flap();
   };
@@ -1208,6 +1308,10 @@ export function CupidGame({ onBack }: CupidGameProps) {
           0%, 100% { transform: scale(1) rotate(0deg); }
           25%      { transform: scale(1.2) rotate(-5deg); }
           75%      { transform: scale(1.2) rotate(5deg); }
+        }
+        @keyframes bonusFadeIn {
+          0%   { opacity: 0; transform: translateY(12px) scale(0.9); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
       {/* Header */}
@@ -1367,6 +1471,16 @@ export function CupidGame({ onBack }: CupidGameProps) {
             >
               {config.game.backToQuiz}
             </button>
+            {showBonusCta && (
+              <button
+                type="button"
+                onClick={handleBonusLevel}
+                className="mt-3 px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold rounded-full shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{ animation: 'bonusFadeIn 0.6s ease-out forwards' }}
+              >
+                ⚡ {config.game.bonusLevel}
+              </button>
+            )}
           </div>
         )}
       </div>
