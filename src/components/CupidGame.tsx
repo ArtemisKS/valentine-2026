@@ -790,22 +790,22 @@ export function CupidGame({ onBack }: CupidGameProps) {
       }
     }
 
-    // ── Boss freeze (pre-explosion) — still pause then trembling ──
+    // ── Boss freeze (pre-explosion) — still → tremble → swell → explode ──
     if (currentScreen === 'bossFreeze') {
       explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
-      const stillDuration = 120;   // ~2s of true freeze (everything stops)
-      const trembleDuration = 180; // ~3s of boss trembling
-      const totalFreeze = stillDuration + trembleDuration; // ~5s total
+      const stillDuration = 150;    // ~1.4s of true freeze
+      const trembleDuration = 250;  // ~2.3s of escalating trembling
+      const swellDuration = 275;    // ~2.5s of boss ballooning before it pops
+      const totalFreeze = stillDuration + trembleDuration + swellDuration;
 
       // Draw frozen scene
       drawScene(ctx, w, h);
 
-      // Darkening overlay — builds slowly during still, faster during tremble
+      // Darkening overlay — builds through all phases
       const dark = isDark();
-      const overlayAlpha = t < stillDuration
-        ? 0.1 + (t / stillDuration) * 0.15
-        : 0.25 + ((t - stillDuration) / trembleDuration) * 0.15;
+      const overallProgress = t / totalFreeze;
+      const overlayAlpha = 0.1 + overallProgress * 0.35;
       ctx.fillStyle = dark
         ? `rgba(15, 23, 42, ${overlayAlpha})`
         : `rgba(255, 241, 242, ${overlayAlpha})`;
@@ -822,36 +822,99 @@ export function CupidGame({ onBack }: CupidGameProps) {
         const pulse = 1 + Math.sin(t * 0.15) * 0.03;
         const s = BOSS_SIZE * pulse;
         drawEmoji(ctx, '😈', s, bx, by);
-      } else {
-        // ── Tremble phase: boss shakes with increasing intensity ──
+
+      } else if (t <= stillDuration + trembleDuration) {
+        // ── Tremble phase: chaotic shaking that escalates ──
         const trembleT = t - stillDuration;
         const progress = trembleT / trembleDuration;
-        const intensity = progress * 12; // shake gets stronger
-        const shakeX = bx + (Math.random() - 0.5) * intensity;
-        const shakeY = by + (Math.random() - 0.5) * intensity;
 
-        // Boss flashes with increasing frequency
-        ctx.globalAlpha = 0.6 + Math.sin(trembleT * (0.3 + progress * 0.8)) * 0.4;
-        const sizeFlicker = 1 + Math.sin(trembleT * 0.4) * progress * 0.15;
+        // Non-linear intensity: starts mild, escalates dramatically
+        const intensity = Math.pow(progress, 1.8) * 25;
+        // Mix of high-frequency jitter + low-frequency lurches
+        const jitterX = (Math.random() - 0.5) * intensity;
+        const jitterY = (Math.random() - 0.5) * intensity;
+        const lurchX = Math.sin(trembleT * 0.15) * intensity * 0.3;
+        const lurchY = Math.cos(trembleT * 0.12) * intensity * 0.4;
+        const shakeX = bx + jitterX + lurchX;
+        const shakeY = by + jitterY + lurchY;
+
+        // Boss flashes with increasing frequency and erratic alpha
+        const flashSpeed = 0.3 + progress * 1.2;
+        ctx.globalAlpha = 0.5 + Math.sin(trembleT * flashSpeed) * 0.3 + Math.random() * progress * 0.2;
+
+        // Size flicker — erratic pulses
+        const sizeFlicker = 1 + Math.sin(trembleT * 0.5) * progress * 0.2 + Math.random() * progress * 0.08;
         drawEmoji(ctx, '😈', BOSS_SIZE * sizeFlicker, shakeX, shakeY);
         ctx.globalAlpha = 1;
 
-        // Pulsing warning glow — grows during tremble
-        const glowRadius = 35 + progress * 25 + Math.sin(trembleT * 0.4) * 15;
-        const glowAlpha = 0.1 + progress * 0.35;
+        // Pulsing warning glow — grows chaotically
+        const glowRadius = 35 + progress * 40 + Math.sin(trembleT * 0.35) * 20;
+        const glowAlpha = 0.1 + progress * 0.4;
         ctx.beginPath();
         ctx.arc(bx, by, glowRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(239, 68, 68, ${glowAlpha})`;
         ctx.fill();
 
         // Inner glow ring
-        if (progress > 0.4) {
-          const innerAlpha = (progress - 0.4) * 0.5;
+        if (progress > 0.3) {
+          const innerAlpha = (progress - 0.3) * 0.6;
           ctx.beginPath();
-          ctx.arc(bx, by, glowRadius * 0.6, 0, Math.PI * 2);
+          ctx.arc(bx, by, glowRadius * 0.5, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(251, 191, 36, ${innerAlpha})`;
           ctx.fill();
         }
+
+        // Sparks start flying off during late tremble
+        if (progress > 0.5) {
+          const sparkAlpha = (progress - 0.5) * 1.5;
+          const sparkCount = Math.floor(progress * 6);
+          for (let i = 0; i < sparkCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 20 + Math.random() * 30 * progress;
+            ctx.globalAlpha = sparkAlpha * (0.3 + Math.random() * 0.7);
+            drawEmoji(ctx, '✨', 14, bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist);
+          }
+          ctx.globalAlpha = 1;
+        }
+
+      } else {
+        // ── Swell phase: boss balloons up like a cartoon about to pop ──
+        const swellT = t - stillDuration - trembleDuration;
+        const progress = swellT / swellDuration;
+
+        // Trembling while growing — not smooth, jerky balloon pumps
+        const jitter = (Math.random() - 0.5) * (12 + progress * 10);
+        const shakeX = bx + jitter;
+        const shakeY = by + (Math.random() - 0.5) * (12 + progress * 10);
+
+        // Boss balloons from 1x to 2.8x — irregular pumping, not smooth
+        const baseGrow = 1 + progress * 1.8; // 1x → 2.8x
+        // Jerky pump pulses that get faster as it's about to pop
+        const pumpFreq = 0.4 + progress * 1.2;
+        const pumpAmp = 0.12 + progress * 0.15;
+        const pumpScale = baseGrow + Math.sin(swellT * pumpFreq) * pumpAmp + Math.random() * progress * 0.06;
+
+        // Boss stays clearly visible — full opacity with only slight flicker
+        ctx.globalAlpha = 0.9 + Math.sin(swellT * 0.8) * 0.1;
+        drawEmoji(ctx, '😈', BOSS_SIZE * pumpScale, shakeX, shakeY);
+        ctx.globalAlpha = 1;
+
+        // Subtle glow behind boss — not too bright so boss stays prominent
+        const glowRadius = BOSS_SIZE * pumpScale * 0.7;
+        ctx.beginPath();
+        ctx.arc(bx, by, glowRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(239, 68, 68, ${0.12 + progress * 0.15})`;
+        ctx.fill();
+
+        // Small sparks flying off — increasing as he's about to pop
+        const sparkCount = Math.floor(2 + progress * 8);
+        for (let i = 0; i < sparkCount; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = BOSS_SIZE * pumpScale * 0.5 + Math.random() * 30;
+          ctx.globalAlpha = 0.3 + Math.random() * 0.5;
+          drawEmoji(ctx, i % 2 === 0 ? '✨' : '💫', 14, bx + Math.cos(angle) * dist, by + Math.sin(angle) * dist);
+        }
+        ctx.globalAlpha = 1;
       }
 
       // HUD
@@ -875,12 +938,12 @@ export function CupidGame({ onBack }: CupidGameProps) {
       return;
     }
 
-    // ── Boss explosion animation ──
+    // ── Boss explosion animation — grandiose finale ──
     if (currentScreen === 'bossExplode') {
       explodeTimerRef.current += dt;
       const t = explodeTimerRef.current;
       const { x: bx, y: by } = explodePosRef.current;
-      const duration = 180; // ~3 seconds
+      const duration = 350; // ~3.2s — grand explosion
 
       drawBackground(ctx, w, h);
 
@@ -888,74 +951,106 @@ export function CupidGame({ onBack }: CupidGameProps) {
       const player = playerRef.current;
       drawEmoji(ctx, '💘', PLAYER_SIZE, player.x + player.width / 2, player.y + player.height / 2);
 
-      // Expanding shockwave rings — more rings, bigger, thicker
-      const ringCount = 5;
+      // Expanding shockwave rings — 7 rings, staggered
+      const ringCount = 7;
       for (let i = 0; i < ringCount; i++) {
-        const delay = i * 15;
+        const delay = i * 12;
         const ringT = t - delay;
         if (ringT <= 0) continue;
-        const radius = ringT * 4;
-        const alpha = Math.max(0, 1 - ringT / 55);
+        const radius = ringT * 4.5;
+        const alpha = Math.max(0, 1 - ringT / 70);
         ctx.beginPath();
         ctx.arc(bx, by, radius, 0, Math.PI * 2);
-        const r = i % 2 === 0 ? 239 : 251;
-        const g = i % 2 === 0 ? 68 : 146;
-        const b = i % 2 === 0 ? 68 : 243;
+        const colors = [
+          [239, 68, 68], [251, 146, 243], [251, 191, 36],
+          [239, 68, 68], [147, 51, 234], [251, 146, 243], [251, 191, 36],
+        ];
+        const [r, g, b] = colors[i]!;
         ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        ctx.lineWidth = 4 - i * 0.5;
+        ctx.lineWidth = 5 - i * 0.5;
         ctx.stroke();
       }
 
-      // Boss shrinks, spins, and fades
-      if (t < 60) {
-        const scale = Math.max(0, 1 - t / 60);
-        const rotation = t * 0.2;
+      // Boss shrinks, spins rapidly, and fades
+      if (t < 80) {
+        const scale = Math.max(0, 1 - t / 80);
+        const rotation = t * 0.3;
         ctx.save();
         ctx.translate(bx, by);
         ctx.rotate(rotation);
         ctx.globalAlpha = scale;
-        const s = BOSS_SIZE * (scale + 0.2);
+        // Start large (from swell phase) and shrink
+        const startScale = 2.0;
+        const s = BOSS_SIZE * (scale * startScale + 0.1);
         const sprite = getEmojiSprite('😈', BOSS_SIZE);
         ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
         ctx.restore();
         ctx.globalAlpha = 1;
       }
 
-      // First wave — burst emojis flying outward (more of them, larger)
-      const bursts = ['💥', '✨', '💫', '⭐', '💥', '✨', '🔥', '💥', '⭐', '✨'];
-      for (let i = 0; i < bursts.length; i++) {
-        const angle = (i / bursts.length) * Math.PI * 2 + t * 0.015;
-        const dist = t * 3;
+      // Wave 1 — large explosion emojis flying outward (28 particles)
+      const bursts1 = [
+        '💥', '✨', '💫', '⭐', '💥', '🔥', '✨', '💥', '⭐', '🔥',
+        '💫', '✨', '💥', '⭐', '🔥', '💥', '✨', '💫', '⭐', '🔥',
+        '💥', '✨', '⭐', '🔥', '💫', '💥', '✨', '⭐',
+      ];
+      for (let i = 0; i < bursts1.length; i++) {
+        const angle = (i / bursts1.length) * Math.PI * 2 + t * 0.012;
+        const dist = t * 3.5;
         const alpha = Math.max(0, 1 - t / duration);
         const ex = bx + Math.cos(angle) * dist;
         const ey = by + Math.sin(angle) * dist;
         ctx.globalAlpha = alpha;
-        drawEmoji(ctx, bursts[i]!, 28, ex, ey);
+        drawEmoji(ctx, bursts1[i]!, 32, ex, ey);
       }
 
-      // Second wave — delayed inner burst
-      if (t > 25) {
-        const wave2 = ['💖', '💝', '💗', '💘', '💞', '💓'];
+      // Wave 2 — delayed heart burst (love conquers all, 18 hearts)
+      if (t > 20) {
+        const wave2 = [
+          '💖', '💝', '💗', '💘', '💞', '💓', '💖', '💝', '💗',
+          '💘', '💞', '💓', '💖', '💝', '💗', '💘', '💞', '💓',
+        ];
         for (let i = 0; i < wave2.length; i++) {
-          const angle = (i / wave2.length) * Math.PI * 2 + Math.PI / 6;
-          const dist = (t - 25) * 2.2;
-          const alpha = Math.max(0, 1 - (t - 25) / (duration - 25));
+          const angle = (i / wave2.length) * Math.PI * 2 + Math.PI / 9;
+          const dist = (t - 20) * 2.5;
+          const alpha = Math.max(0, 1 - (t - 20) / (duration - 20));
           const ex = bx + Math.cos(angle) * dist;
           const ey = by + Math.sin(angle) * dist;
           ctx.globalAlpha = alpha;
-          drawEmoji(ctx, wave2[i]!, 22, ex, ey);
+          drawEmoji(ctx, wave2[i]!, 26, ex, ey);
+        }
+      }
+
+      // Wave 3 — late sparkle burst (fills the screen, 25 sparkles)
+      if (t > 50) {
+        const wave3 = [
+          '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨',
+          '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟', '⭐', '✨', '🌟',
+          '⭐', '✨', '🌟', '⭐', '✨',
+        ];
+        for (let i = 0; i < wave3.length; i++) {
+          const angle = (i / wave3.length) * Math.PI * 2 + Math.PI / 4;
+          const dist = (t - 50) * 2.0;
+          const alpha = Math.max(0, 1 - (t - 50) / (duration - 50));
+          const ex = bx + Math.cos(angle) * dist;
+          const ey = by + Math.sin(angle) * dist;
+          ctx.globalAlpha = alpha;
+          drawEmoji(ctx, wave3[i]!, 20, ex, ey);
         }
       }
       ctx.globalAlpha = 1;
 
-      // Screen flash — bigger and with a secondary pulse
-      if (t < 12) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * (1 - t / 12)})`;
+      // Screen flash — dramatic white flash + secondary pink pulse + tertiary gold
+      if (t < 15) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * (1 - t / 15)})`;
         ctx.fillRect(0, 0, w, h);
-      } else if (t > 25 && t < 35) {
-        // Secondary pulse flash
-        const flashT = (t - 25) / 10;
-        ctx.fillStyle = `rgba(251, 146, 243, ${0.3 * (1 - flashT)})`;
+      } else if (t > 25 && t < 40) {
+        const flashT = (t - 25) / 15;
+        ctx.fillStyle = `rgba(251, 146, 243, ${0.35 * (1 - flashT)})`;
+        ctx.fillRect(0, 0, w, h);
+      } else if (t > 55 && t < 70) {
+        const flashT = (t - 55) / 15;
+        ctx.fillStyle = `rgba(251, 191, 36, ${0.2 * (1 - flashT)})`;
         ctx.fillRect(0, 0, w, h);
       }
 
