@@ -146,7 +146,12 @@ export default function App() {
    }, []);
 
   const handleStart = () => {
-    dispatch({ type: 'START_QUIZ' });
+    if (state.reachedEnd) {
+      // Already completed the quiz — navigate without resetting progress
+      dispatch({ type: 'NAVIGATE_TO', step: 'question', questionIndex: 0 });
+    } else {
+      dispatch({ type: 'START_QUIZ' });
+    }
   };
 
   const handleAnswer = (letterSegment: string) => {
