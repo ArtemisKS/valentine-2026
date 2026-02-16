@@ -303,7 +303,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
   // Game state in refs to avoid re-renders during game loop
   const screenRef = useRef<GameScreen>('countdown');
-  const levelRef = useRef(3); // DEBUG: start at level 4
+  const levelRef = useRef(0);
   const scoreRef = useRef(0);
   const bestScoreRef = useRef(sessionBestScore);
   const levelStartScoreRef = useRef(0);
@@ -334,7 +334,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
 
   // React state for overlay screens only
   const [screen, setScreen] = useState<GameScreen>('countdown');
-  const [level, setLevel] = useState(3); // DEBUG: start at level 4
+  const [level, setLevel] = useState(0);
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(sessionBestScore);
   const [countdown, setCountdown] = useState(3);
@@ -1568,7 +1568,7 @@ export function CupidGame({ onBack }: CupidGameProps) {
     levelStartScoreRef.current = 0;
     scoreRef.current = 0;
     setScore(0);
-    initLevel(3, false); // DEBUG: start at level 4
+    initLevel(0, false);
     rafRef.current = requestAnimationFrame(gameLoop);
 
     const handleResize = () => resizeCanvas();
