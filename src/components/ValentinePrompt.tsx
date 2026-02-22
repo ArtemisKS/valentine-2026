@@ -107,14 +107,14 @@ export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePr
       }
 
       const particleCount = 50 * (timeLeft / duration);
-      
+
       confetti({
         ...defaults,
         particleCount,
         origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
         colors: ['#ff1744', '#ff5252', '#ff6e40', '#ff9100', '#ffc400'],
       });
-      
+
       confetti({
         ...defaults,
         particleCount,
@@ -437,7 +437,7 @@ export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePr
     if (messageTimerRef.current) {
       clearTimeout(messageTimerRef.current);
     }
-    
+
     messageTimerRef.current = window.setTimeout(() => {
       setNoClickMessage(null);
       messageTimerRef.current = null;
@@ -474,7 +474,7 @@ export function ValentinePrompt({ onYes, hideNoButton, onPlayGame }: ValentinePr
         <div className="bg-white/40 dark:bg-white/[0.07] backdrop-blur-xl rounded-3xl shadow-2xl shadow-rose-200/50 dark:shadow-black/30 p-8 sm:p-12 border border-white/60 dark:border-white/[0.12] relative overflow-hidden transition-colors duration-500">
           {/* Glass reflection effect */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/30 dark:from-white/[0.08] via-transparent to-transparent pointer-events-none" />
-          
+
           <div className="text-center relative">
             <div className="mb-8 sm:mb-12">
               <div className="text-6xl sm:text-7xl mb-6 animate-[bounce_2s_ease-in-out_infinite]">

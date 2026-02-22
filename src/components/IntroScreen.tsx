@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { config } from '../../config/config';
 import { questions } from '../../config/content';
 
@@ -7,21 +7,28 @@ interface IntroScreenProps {
 }
 
 export const IntroScreen: React.FC<IntroScreenProps> = ({ onStart }) => {
-  // Preload quiz videos via <link> tags (doesn't consume iOS media element slots)
-  const videoLinks = questions
-    .filter(q => q.videoSrc)
-    .map(q => (
-      <link
-        key={q.id}
-        rel="preload"
-        as="video"
-        href={import.meta.env.BASE_URL + q.videoSrc}
-      />
-    ));
+  // Preload quiz videos via <link> tags injected into head
+  useEffect(() => {
+    const links: HTMLLinkElement[] = [];
+
+    questions.forEach(q => {
+      if (q.videoSrc) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'video';
+        link.href = import.meta.env.BASE_URL + q.videoSrc;
+        document.head.appendChild(link);
+        links.push(link);
+      }
+    });
+
+    return () => {
+      links.forEach(link => document.head.removeChild(link));
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-100 via-pink-50 to-rose-200 dark:from-slate-950 dark:via-gray-900 dark:to-slate-950 px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative overflow-hidden transition-colors duration-500">
-      {videoLinks}
       {/* Floating background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[10%] left-[5%] text-rose-300 opacity-20 dark:opacity-10 text-6xl animate-[float-1_8s_ease-in-out_infinite]">💕</div>
