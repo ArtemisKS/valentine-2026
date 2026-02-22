@@ -88,9 +88,54 @@ export const config = {
     ],
   },
 
+  // ─── Emoji reaction feedback ───────────────────────────────────────
+  /** Positive feedback messages shown after selecting an emoji reaction (shuffled per mount) */
+  emojiReactionFeedback: [
+    'Perfect choice — your emotions shine through',
+    'Love that energy — it says a lot about you',
+    'Great pick — I can feel the warmth from here',
+    'Beautiful answer — that one made me smile',
+  ],
+
   // ─── Footer ────────────────────────────────────────────────────────
   footer: {
     /** Footer text template. {sender} and {recipient} are replaced automatically. */
     text: 'Made with love by {sender} for {recipient}',
+  },
+
+  // ─── Cupid's Arrow Runner game ────────────────────────────────────
+  game: {
+    /** Label on the play button shown after Yes is clicked */
+    playButton: 'Play a Game',
+    /** Names for each level */
+    levelNames: ['Garden of Love', 'Sky of Hearts', "Cupid's Castle", "Cupid's Gauntlet"],
+    /** Shown when the player loses */
+    gameOver: 'Game Over!',
+    /** Label on retry button */
+    tryAgain: 'Try Again',
+    /** Label on back button */
+    backToQuiz: 'Back to Valentine',
+    /** Heading after defeating the boss */
+    victory: 'You Won!',
+    /** Sub-message after defeating the regular boss */
+    victoryMessage: 'Cupid conquers all!',
+    /** Sub-message after defeating the mega boss */
+    megaVictoryMessage: 'Cupid is invincible! 💘🚀',
+    /** Boss name displayed during level 3 */
+    bossName: 'Anti-Cupid',
+    /** Mega Boss name displayed during bonus level */
+    megaBossName: 'Mega Anti-Cupid',
+    /** Label for score display */
+    scoreLabel: 'Score',
+    /** Label for level display */
+    levelLabel: 'Level',
+    /** Shown when the player sets a new best score */
+    newHighScore: 'NEW HIGH SCORE!',
+    /** Retro announcement before boss fights */
+    finalBoss: 'FINAL BOSS',
+    /** Retro announcement before mega boss */
+    megaBoss: 'MEGA BOSS',
+    /** CTA label to start bonus level from victory screen */
+    bonusLevel: 'Bonus Level',
   },
 };

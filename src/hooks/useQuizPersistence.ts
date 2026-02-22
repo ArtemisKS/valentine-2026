@@ -37,7 +37,7 @@ export function useQuizPersistence(
   }, [state]);
 
   useEffect(() => {
-    if (state.step === 'valentine') {
+    if (state.step === 'valentine' || state.step === 'game') {
       try {
         sessionStorage.removeItem(STORAGE_KEY);
       } catch (error) {
